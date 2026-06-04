@@ -1,0 +1,36 @@
+# Publishes meisimusa-mcp to npm on every GitHub Release, using npm Trusted
+# Publishing (OIDC) — no NODE_AUTH_TOKEN secret to manage. One-time setup:
+#   1. Push this package to its own GitHub repo (or keep it in the monorepo and
+#      leave `working-directory: .` below pointing at the package root).
+#   2. On npmjs.com → the package → Settings → Trusted Publishing, add this repo
+#      + workflow file name (publish.yml). (For the very first publish you may
+#      need to `npm publish` once manually to create the package name.)
+#   3. Cut a GitHub Release (tag e.g. v0.1.0). This runs, tests, and publishes
+#      with build provenance.
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write   # required for Trusted Publishing + provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .   # change to ./mcp-esim if publishing from the monorepo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm publish --provenance --access public

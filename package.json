@@ -1,0 +1,50 @@
+{
+  "name": "meisimusa-mcp",
+  "version": "0.1.5",
+  "description": "MCP server for MeiSIM USA — search and buy travel eSIMs from Claude, ChatGPT, and other AI assistants.",
+  "type": "module",
+  "bin": {
+    "meisimusa-mcp": "dist/cli.js",
+    "meisimusa-mcp-http": "dist/http-server.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/cli.ts",
+    "start": "node dist/cli.js",
+    "start:http": "node dist/http-server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "esim",
+    "travel",
+    "meisim",
+    "claude",
+    "ai-agent"
+  ],
+  "license": "MIT",
+  "author": "MeiSIM USA <support@meisimusa.com>",
+  "homepage": "https://www.meisimusa.com/api-for-ai-agents.html",
+  "repository": { "type": "git", "url": "git+https://github.com/Shauliko/meisimusa-mcp.git" },
+  "bugs": { "url": "https://github.com/Shauliko/meisimusa-mcp/issues" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

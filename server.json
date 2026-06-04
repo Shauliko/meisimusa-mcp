@@ -1,0 +1,32 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.shauliko/meisimusa-mcp",
+  "description": "Search and buy travel eSIMs from MeiSIM USA inside any AI assistant — covers data plans for ~200 countries, customer pays by card via a Stripe link, QR delivered automatically.",
+  "version": "0.1.5",
+  "repository": {
+    "url": "https://github.com/Shauliko/meisimusa-mcp",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "meisimusa-mcp",
+      "version": "0.1.5",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "MEISIMUSA_API_KEY",
+          "description": "Optional dealer key (x-dealer-key). Not needed for the public consumer flow.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.meisimusa.com/mcp"
+    }
+  ]
+}

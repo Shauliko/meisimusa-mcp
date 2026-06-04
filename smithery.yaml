@@ -1,0 +1,30 @@
+# Smithery.ai listing config. Lets users install meisimusa-mcp from the
+# Smithery directory with one click. stdio launch via the published npm package.
+# Docs: https://smithery.ai/docs
+startCommand:
+  type: stdio
+  # All config is optional — the consumer flow uses MeiSIM's public retail API,
+  # so no key is required to search/quote/purchase/activate.
+  configSchema:
+    type: object
+    properties:
+      MEISIMUSA_API_KEY:
+        type: string
+        title: Dealer API key (optional)
+        description: Only needed for the B2B dealer endpoints. Leave blank for the public consumer flow.
+      MEISIMUSA_API_BASE:
+        type: string
+        title: API base URL (optional)
+        default: https://meisimusa-backend.vercel.app
+    additionalProperties: false
+  commandFunction: |-
+    (config) => ({
+      command: 'node',
+      args: ['dist/cli.js'],
+      env: {
+        ...(config.MEISIMUSA_API_KEY ? { MEISIMUSA_API_KEY: config.MEISIMUSA_API_KEY } : {}),
+        ...(config.MEISIMUSA_API_BASE ? { MEISIMUSA_API_BASE: config.MEISIMUSA_API_BASE } : {})
+      }
+    })
+build:
+  dockerfile: Dockerfile   # optional; only used by Smithery's hosted runner
