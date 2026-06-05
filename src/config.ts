@@ -20,7 +20,7 @@ export interface Config {
   infoOnly: boolean;
 }
 
-export const VERSION = '0.1.5';
+export const VERSION = '0.1.6';
 
 export function loadConfig(argv: string[] = process.argv.slice(2)): Config {
   const mock =

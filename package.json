@@ -1,6 +1,6 @@
 {
   "name": "meisimusa-mcp",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "MCP server for MeiSIM USA — search and buy travel eSIMs from Claude, ChatGPT, and other AI assistants.",
   "type": "module",
   "bin": {
@@ -21,7 +21,8 @@
     "start:http": "node dist/http-server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "prepare": "npm run build"
   },
   "keywords": [
     "mcp",

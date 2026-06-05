@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
   "name": "io.github.shauliko/meisimusa-mcp",
   "description": "Search and buy travel eSIMs from MeiSIM USA inside any AI assistant — covers data plans for ~200 countries, customer pays by card via a Stripe link, QR delivered automatically.",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "repository": {
     "url": "https://github.com/Shauliko/meisimusa-mcp",
     "source": "github"
@@ -11,7 +11,7 @@
     {
       "registryType": "npm",
       "identifier": "meisimusa-mcp",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "transport": { "type": "stdio" },
       "environmentVariables": [
         {

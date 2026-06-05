@@ -62,8 +62,9 @@ export function makeSearchPlansHandler(cfg: Config) {
     let plans = (raw?.products || [])
       .map(normalizePlan)
       .filter((p): p is NormalizedPlan => p !== null)
-      // Defense in depth: never surface sub-$0.50 test/junk plans even if the
-      // backend filter missed one.
+      // Travel data only — real US phone-number plans (p3:) have their own tool.
+      .filter((p) => !String(p.plan_id).startsWith('p3:'))
+      // Defense in depth: never surface sub-$0.50 test/junk plans.
       .filter((p) => p.price >= 0.5)
       .filter((p) => p.duration_days === 0 || p.duration_days >= args.duration_days)
       .filter((p) => args.data_gb == null || p.data_gb == null || p.data_gb >= args.data_gb);

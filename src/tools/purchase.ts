@@ -70,6 +70,10 @@ export function makePurchaseHandler(cfg: Config) {
         paymentMethod: 'card',   // /web/checkout requires this exact field name
         quantity: 1,
         language: 'en',
+        // US phone-number plans (p3:) need a device EID, OR we deliver a
+        // ready-to-scan QR (+$4) instead — which is the only sane option in a
+        // chat where there's no device handy. Travel eSIMs ignore this field.
+        ...(String(args.plan_id).startsWith('p3:') ? { attDelivery: 'qr' } : {}),
       },
     });
 

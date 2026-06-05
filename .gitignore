@@ -3,3 +3,6 @@ dist/
 *.log
 .env
 .DS_Store
+_check*.mjs
+smoke*.mjs
+chain*.mjs
