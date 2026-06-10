@@ -6,3 +6,4 @@ dist/
 _check*.mjs
 smoke*.mjs
 chain*.mjs
+package-lock.json

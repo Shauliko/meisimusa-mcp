@@ -39,7 +39,16 @@ export const searchPlansInput = {
 const schema = z.object(searchPlansInput);
 export type SearchPlansArgs = z.infer<typeof schema>;
 
-function sortPlans(plans: NormalizedPlan[], by: SearchPlansArgs['sort_by']): NormalizedPlan[] {
+// A search result is a normalized plan plus search-context fields (the country
+// the user searched for, the vendor, and coverage breadth). get_quote/purchase
+// keep using the bare NormalizedPlan — these extra fields live only here.
+type SearchPlan = NormalizedPlan & {
+  vendor: string;
+  coverage: 'country' | 'regional';
+  coverage_countries: number;
+};
+
+function sortPlans<T extends NormalizedPlan>(plans: T[], by: SearchPlansArgs['sort_by']): T[] {
   const copy = [...plans];
   if (by === 'price') copy.sort((a, b) => a.price - b.price);
   else if (by === 'duration') copy.sort((a, b) => a.duration_days - b.duration_days);
@@ -51,6 +60,25 @@ function sortPlans(plans: NormalizedPlan[], by: SearchPlansArgs['sort_by']): Nor
   return copy;
 }
 
+// Number of countries a plan covers. The backend's `countries` array mixes ISO
+// codes with full names (e.g. ["IT","Italy"]), so we count the ISO entries; if
+// none are present we fall back to the raw list length.
+function coverageCount(rp: RetailProduct): number {
+  const list = rp.countries || [];
+  const isoCount = list.filter((c) => /^[A-Za-z]{2}$/.test(String(c))).length;
+  return isoCount || list.length;
+}
+
+// English country name from an ISO code via the built-in Intl API (Node 18+,
+// no dependency). Falls back to the raw code if the lookup fails.
+function isoToCountryName(iso: string): string {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(iso) || iso;
+  } catch {
+    return iso;
+  }
+}
+
 export function makeSearchPlansHandler(cfg: Config) {
   return async (args: SearchPlansArgs) => {
     const iso = args.country_code.toUpperCase();
@@ -59,15 +87,35 @@ export function makeSearchPlansHandler(cfg: Config) {
       path: `/mm/products?country=${encodeURIComponent(iso)}`,
     });
 
-    let plans = (raw?.products || [])
-      .map(normalizePlan)
-      .filter((p): p is NormalizedPlan => p !== null)
+    const countryName = isoToCountryName(iso);
+
+    // Keep each raw product alongside its normalized plan so we can read the
+    // vendor + coverage breadth (lost during normalize) when building results.
+    let items = (raw?.products || [])
+      .map((rp) => ({ rp, plan: normalizePlan(rp) }))
+      .filter((x): x is { rp: RetailProduct; plan: NormalizedPlan } => x.plan !== null)
       // Travel data only — real US phone-number plans (p3:) have their own tool.
-      .filter((p) => !String(p.plan_id).startsWith('p3:'))
+      .filter((x) => !String(x.plan.plan_id).startsWith('p3:'))
       // Defense in depth: never surface sub-$0.50 test/junk plans.
-      .filter((p) => p.price >= 0.5)
-      .filter((p) => p.duration_days === 0 || p.duration_days >= args.duration_days)
-      .filter((p) => args.data_gb == null || p.data_gb == null || p.data_gb >= args.data_gb);
+      .filter((x) => x.plan.price >= 0.5)
+      .filter((x) => x.plan.duration_days === 0 || x.plan.duration_days >= args.duration_days)
+      .filter((x) => args.data_gb == null || x.plan.data_gb == null || x.plan.data_gb >= args.data_gb);
+
+    // Build the search results. Every returned plan covers the searched country,
+    // so `country`/`country_name` reflect what the user asked for — NOT the
+    // plan's first alphabetical coverage country. The vendor moves to its own
+    // field, and we flag whether a plan is country-specific or regional.
+    let plans: SearchPlan[] = items.map(({ rp, plan }) => {
+      const n = coverageCount(rp);
+      return {
+        ...plan,
+        country: iso,
+        country_name: countryName,
+        vendor: rp.providerName || '',
+        coverage: (n <= 3 ? 'country' : 'regional') as 'country' | 'regional',
+        coverage_countries: n,
+      };
+    });
 
     plans = sortPlans(plans, args.sort_by);
 
