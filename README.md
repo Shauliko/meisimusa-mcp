@@ -1,29 +1,40 @@
 # meisimusa-mcp
 
-An MCP (Model Context Protocol) server that lets AI assistants — Claude (web, desktop, mobile), ChatGPT, Perplexity, Cursor, Zed — **search and buy travel eSIMs** from [MeiSIM USA](https://www.meisimusa.com) in natural language.
+The MCP (Model Context Protocol) server for [MeiSIM USA](https://www.meisimusa.com). Two things in one server:
 
-> "I'm going to Italy for 10 days, get me 5GB" → the assistant searches plans, returns a Stripe payment link, and once the customer pays, hands back the install QR — all in the chat.
+1. **Real US phone numbers for your AI agent** (API key). List the numbers on your account, read the texts they receive, wait for the next one, send texts, check the wallet and buy more numbers. The numbers are real carrier lines, not virtual numbers.
+2. **Travel eSIMs and retail US plans** (no key). Search plans for about 200 countries, get a quote, pay by card on a Stripe page, get the install QR, top up a line.
 
-It's a **thin wrapper** over MeiSIM's existing **public** REST API (`/mm/products`, `/web/checkout`, `/web/order/:id`). No business logic, no database, **no API key required** — the customer pays their own card on Stripe's hosted page.
+> "Which of my numbers got a text in the last hour?" → `read_messages`
+> "Wait for the confirmation text on 423 432 2309 and read it back" → `wait_for_message`
+> "Text +1 212 555 0100 from my number: running ten minutes late" → `send_message`
+> "I'm going to Italy for 10 days, get me 5GB" → `search_plans`, `purchase`, `get_activation`
 
-## Tools
+## Connect
 
-| Tool | Wraps | Notes |
-|------|-------|-------|
-| `search_plans` | `GET /mm/products?country=` | USD prices, returns `plan_id` |
-| `get_quote` | `GET /mm/products/:id` | price breakdown + short quote |
-| `purchase` | `POST /web/checkout` | returns a **Stripe payment link**; in-process idempotency |
-| `get_activation` | `GET /web/order/:id` | status + QR (rendered as an image when ready) |
+**Remote, nothing to install.** Add `https://mcp.meisimusa.com/mcp` as a custom connector or HTTP MCP server. For the tools on your own numbers, send your API key on the connection:
 
-## Two ways to run it
-
-**Remote (reaches everyone, no install)** — host the Streamable HTTP endpoint and add it as a custom connector. Works on claude.ai web, Claude mobile, ChatGPT, Perplexity. See `PHASE3_DISTRIBUTION.md` step 3.
-
-```
-https://mcp.meisimusa.com/mcp
+```bash
+# Claude Code
+claude mcp add --transport http meisim https://mcp.meisimusa.com/mcp --header "Authorization: Bearer YOUR_KEY"
 ```
 
-**Local (desktop/IDE)** — Claude Desktop, Cursor, Zed via the npm package:
+```jsonc
+// Cursor, Windsurf and other clients with an mcp.json
+{
+  "mcpServers": {
+    "meisim": {
+      "type": "http",
+      "url": "https://mcp.meisimusa.com/mcp",
+      "headers": { "Authorization": "Bearer YOUR_KEY" }
+    }
+  }
+}
+```
+
+Without a key the retail tools still work and the number tools answer with where to apply.
+
+**Local (stdio), for Claude Desktop, Cursor, Zed:**
 
 ```jsonc
 // claude_desktop_config.json
@@ -31,23 +42,56 @@ https://mcp.meisimusa.com/mcp
   "mcpServers": {
     "meisimusa": {
       "command": "npx",
-      "args": ["-y", "meisimusa-mcp"]
+      "args": ["-y", "meisimusa-mcp"],
+      "env": { "MEISIMUSA_API_KEY": "YOUR_KEY" }
     }
   }
 }
 ```
 
-No `env` block needed for the consumer flow. (See `PHASE2_TESTING.md` for testing against a local build first.)
+**Get an API key.** Apply at https://www.meisimusa.com/wholesale.html#apply. A person reviews every application and approves the account; there is no self-serve signup. Keys are the account: they say which numbers are yours, whose prepaid wallet pays, and what the account may do (sending, voice, a daily spending limit).
 
-## Configure (all optional)
+## Tools
+
+### Your numbers (API key)
+
+| Tool | What it does | Wraps |
+|---|---|---|
+| `get_account` | Company, status, wallet balance, how many numbers you may still activate today | `GET /api/v1/me`, `GET /dealer/wallet` |
+| `get_number_pricing` | What a new number costs on your account, daily or monthly, with or without voice | `GET /dealer/sms-lines/offer` |
+| `buy_numbers` | Order numbers from the prepaid wallet; prepaid, no returns; `customer_reference` makes a retry safe | `POST /api/v1/sms/order` |
+| `get_order` | Status of an order, the numbers delivered so far, what was charged | `GET /api/v1/sms/orders/:id` |
+| `list_my_numbers` | Your numbers, paged, with billing and the date each is paid through | `GET /api/v1/sms/lines` |
+| `read_messages` | Texts received, newest first; filter by number and `since` | `GET /api/v1/sms/messages` |
+| `wait_for_message` | Block up to 50 s for the next text on a number, then return it | polls the same |
+| `send_message` | A text from one of your numbers (sending is enabled per account) | `POST /api/v1/sms/lines/:number/send` |
+
+Money rules the server enforces by design: `buy_numbers` always sends a `customer_reference` (yours or a generated one) and the backend treats it as an idempotency key, so an AI retry cannot order twice. The account's daily spending limit and wallet balance are enforced server-side and come back as structured errors (`payment_required`, `rate_limited`), never retried silently. The agent cannot add money to the wallet.
+
+Voice: a number bought with `voice: true` also takes and makes calls over SIP. The SIP login is shown on your MeiSIM dashboard, not through this server.
+
+### Retail (no key)
+
+| Tool | What it does | Wraps |
+|---|---|---|
+| `search_plans` | Travel eSIM plans for a country, USD | `GET /mm/products?country=` |
+| `get_quote` | Price breakdown for one plan | `GET /mm/products/:id` |
+| `search_us_numbers` | Retail US phone plans (a line on a phone, paid by card) | `GET /mm/products?country=US` |
+| `purchase` | A Stripe payment link; the eSIM is emailed when paid | `POST /web/checkout` |
+| `get_activation` | Order status and the install QR | `GET /web/order/:id` |
+| `topup_lookup`, `topup_start` | Refill an existing US line | `/web/topup/*` |
+
+The customer pays their own card on Stripe's hosted page; the server never sees card data. Every purchase carries an idempotency key.
+
+## Configure
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `MEISIMUSA_API_KEY` | — | **Optional.** Dealer key (`x-dealer-key`), only for the B2B dealer endpoints. Never logged in full. |
+| `MEISIMUSA_API_KEY` | none | Your API key (local stdio server). The remote server takes it per request from `Authorization: Bearer`, `x-dealer-key` or `x-api-key` and ignores this variable. |
 | `MEISIMUSA_API_BASE` | `https://meisimusa-backend.vercel.app` | Backend base URL. |
-| `MEISIMUSA_PRICE_CURRENCY` | `USD` | Currency label (retail catalog is USD). |
 | `MEISIMUSA_TIMEOUT_MS` | `20000` | Per-request timeout. |
-| `--mock` / `MEISIMUSA_MOCK=1` | off | Serve deterministic in-memory data; no network. |
+| `--mock` / `MEISIMUSA_MOCK=1` | off | Deterministic in-memory data, no network. |
+| `--info-only` / `MEISIMUSA_INFO_ONLY=1` | off | Only the retail discovery tools (the ChatGPT directory build). Remote: `/mcp-info`. |
 | `PORT` / `MCP_PATH` | `8787` / `/mcp` | Remote HTTP server only. |
 
 ## Develop
@@ -55,25 +99,14 @@ No `env` block needed for the consumer flow. (See `PHASE2_TESTING.md` for testin
 ```bash
 npm install
 npm run dev -- --mock     # stdio server on mock data
-npm run start:http        # remote Streamable HTTP server (also honours --mock via env)
-npm test                  # vitest: all four tools, happy + error paths
-npm run build             # → dist/  (enables npx + node dist/http-server.js)
+npm run start:http        # remote Streamable HTTP server
+npm test                  # vitest: every tool, happy and error paths, against the mock
+npm run build             # dist/ (enables npx + node dist/http-server.js)
 ```
-
-## Payment & idempotency
-
-`purchase` returns a hosted Stripe checkout URL; the customer pays with their own card and MeiSIM's existing webhook provisions + emails the QR. The buyer pays, you don't front cost, and the AI never sees card data. Every purchase carries an `idempotency_key` (auto-generated if absent); a repeat with the same key returns the first checkout instead of opening a second — so an AI retry can't double-charge.
 
 ## Security
 
-- API keys, tokens, and QR/LPA strings are never logged — identifiers masked to first-4 + last-4.
-- Backend `429` is surfaced as a structured error with `retry_after_seconds`; never retried silently.
-
-## Remaining backend items (small)
-
-The public retail path resolved the earlier gaps (USD retail pricing, card payment, QR delivery, order_id-keyed activation are all handled by existing endpoints). What's left:
-
-1. **Durable idempotency.** The in-process key guard covers AI retries within a session; cross-process/replicated dedupe would need the backend to treat the key (sent as the order reference) as a true idempotency key.
-2. **QR as PNG.** `get_activation` renders an image when the order carries a base64 PNG; if your order stores only the LPA string, it surfaces as `activation_code` (still installable). Optional: have the order store a PNG too.
-
-A separate **B2B dealer path** (wallet-billed, `x-dealer-key`, `/api/v1/esim/*`) also exists if you want resellers to buy against a prepaid balance instead of per-card.
+- API keys, payment tokens and QR/LPA strings are never logged; identifiers are masked to first-4 + last-4.
+- The remote server never holds a key of its own; each request carries its caller's.
+- A backend `429` is surfaced as `rate_limited` with `retry_after_seconds`; a `402` as `payment_required`.
+- Messages are returned as received. The server parses nothing out of them.

@@ -10,8 +10,11 @@
 // cache persists across requests. No new npm deps — Node's http + the SDK.
 //
 // Env: PORT (default 8787), MCP_PATH (default /mcp), plus the same MEISIMUSA_*
-// vars as the stdio server (MEISIMUSA_API_KEY is optional — the retail path is
-// public).
+// vars as the stdio server. The retail tools need no key. The tools on YOUR
+// numbers take the caller's API key from the request, per request:
+//   Authorization: Bearer <key>   or   x-dealer-key: <key>   or   x-api-key: <key>
+// so one shared endpoint serves every account. MEISIMUSA_API_KEY in the env
+// of a shared server would hand one account to the world; it is ignored here.
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -19,7 +22,17 @@ import { loadConfig } from './config.js';
 import { buildServer } from './server.js';
 import { log } from './logger.js';
 
-const cfg = loadConfig([]);
+const cfg = { ...loadConfig([]), apiKey: undefined };
+
+/** The caller's API key, from the request. Never logged in full (see logger). */
+function keyFrom(req: IncomingMessage): string | undefined {
+  const auth = String(req.headers['authorization'] || '');
+  const m = /^Bearer\s+(.+)$/i.exec(auth.trim());
+  const k = (m && m[1]) || req.headers['x-dealer-key'] || req.headers['x-api-key'];
+  const key = Array.isArray(k) ? k[0] : k;
+  const s = String(key || '').trim();
+  return s && s.length <= 200 ? s : undefined;
+}
 const PORT = Number(process.env.PORT || 8787);
 const MCP_PATH = process.env.MCP_PATH || '/mcp';
 // ChatGPT can't sell digital goods, so it connects to the info-only path
@@ -45,7 +58,7 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
   // these headers. Server-to-server callers ignore them, so this is safe.
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id, mcp-protocol-version');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-dealer-key, x-api-key, mcp-session-id, mcp-protocol-version');
   res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id, mcp-protocol-version');
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -74,7 +87,8 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
 
   try {
     const body = await readBody(req);
-    const mcp = buildServer(isInfo ? { ...cfg, infoOnly: true } : cfg);
+    const reqCfg = { ...cfg, apiKey: isInfo ? undefined : keyFrom(req) };
+    const mcp = buildServer(isInfo ? { ...reqCfg, infoOnly: true } : reqCfg);
     // enableJsonResponse: reply with plain application/json instead of an SSE
     // stream, which the OpenAI scanner (and simpler clients) parse reliably.
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
@@ -91,5 +105,5 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
 });
 
 httpServer.listen(PORT, () =>
-  log.info('streamable-http server listening', { port: PORT, path: MCP_PATH, mock: cfg.mock, has_key: !!cfg.apiKey }),
+  log.info('streamable-http server listening', { port: PORT, path: MCP_PATH, mock: cfg.mock }),
 );

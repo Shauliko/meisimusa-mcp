@@ -1,10 +1,11 @@
 // Central config. Read once at startup from env + argv.
 //
-// The consumer flow (search / quote / purchase / activation) runs entirely on
-// MeiSIM's PUBLIC retail endpoints — no API key required, prices in USD, and
-// the customer pays their own card on Stripe's hosted page. MEISIMUSA_API_KEY
-// is therefore OPTIONAL; it is only sent (as x-dealer-key) if you point the
-// server at the B2B dealer endpoints. It is never logged in full.
+// The retail flow (search / quote / purchase / activation) runs on MeiSIM's
+// PUBLIC endpoints: no API key, prices in USD, the customer pays their own card
+// on Stripe's hosted page. The tools on YOUR numbers (list, read, wait, send,
+// buy, account) need an API key: MEISIMUSA_API_KEY for the local stdio server,
+// or a per-request header on the remote server (see http-server.ts). Never
+// logged in full.
 
 export interface Config {
   baseUrl: string;
@@ -20,7 +21,7 @@ export interface Config {
   infoOnly: boolean;
 }
 
-export const VERSION = '0.1.6';
+export const VERSION = '0.2.0';
 
 export function loadConfig(argv: string[] = process.argv.slice(2)): Config {
   const mock =

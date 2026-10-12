@@ -3,15 +3,15 @@
 # Docs: https://smithery.ai/docs
 startCommand:
   type: stdio
-  # All config is optional — the consumer flow uses MeiSIM's public retail API,
-  # so no key is required to search/quote/purchase/activate.
+  # The retail travel eSIM flow needs no key. The tools on your own numbers
+  # (list, read, wait, send, buy) need your MeiSIM API key.
   configSchema:
     type: object
     properties:
       MEISIMUSA_API_KEY:
         type: string
-        title: Dealer API key (optional)
-        description: Only needed for the B2B dealer endpoints. Leave blank for the public consumer flow.
+        title: MeiSIM API key (optional)
+        description: Needed for the tools on your own numbers. Leave blank for the retail travel eSIM flow.
       MEISIMUSA_API_BASE:
         type: string
         title: API base URL (optional)

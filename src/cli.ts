@@ -5,8 +5,8 @@
 //
 // Flags / env:
 //   --mock                 serve everything from the in-memory mock (no network)
-//   MEISIMUSA_API_KEY      dealer API key (required unless --mock)
-//   MEISIMUSA_API_BASE     override backend base URL (default https://meisimusa.com)
+//   MEISIMUSA_API_KEY      your MeiSIM API key (needed for the tools on your numbers)
+//   MEISIMUSA_API_BASE     override backend base URL (default https://meisimusa-backend.vercel.app)
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { loadConfig } from './config.js';

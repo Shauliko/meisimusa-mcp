@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
   "name": "io.github.shauliko/meisimusa-mcp",
-  "description": "Search and buy travel eSIMs from MeiSIM USA inside any AI assistant — covers data plans for ~200 countries, customer pays by card via a Stripe link, QR delivered automatically.",
-  "version": "0.1.6",
+  "description": "Real US phone numbers for AI agents from MeiSIM USA: list your numbers, read and wait for texts, send texts, buy numbers from a prepaid wallet (API key). Also travel eSIMs and retail US plans for ~200 countries with no key, paid by card via a Stripe link.",
+  "version": "0.2.0",
   "repository": {
     "url": "https://github.com/Shauliko/meisimusa-mcp",
     "source": "github"
@@ -11,12 +11,12 @@
     {
       "registryType": "npm",
       "identifier": "meisimusa-mcp",
-      "version": "0.1.6",
+      "version": "0.2.0",
       "transport": { "type": "stdio" },
       "environmentVariables": [
         {
           "name": "MEISIMUSA_API_KEY",
-          "description": "Optional dealer key (x-dealer-key). Not needed for the public consumer flow.",
+          "description": "Your MeiSIM API key. Needed for the tools on your own numbers; not for the retail travel eSIM flow.",
           "isRequired": false,
           "isSecret": true
         }

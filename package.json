@@ -1,7 +1,7 @@
 {
   "name": "meisimusa-mcp",
-  "version": "0.1.6",
-  "description": "MCP server for MeiSIM USA — search and buy travel eSIMs from Claude, ChatGPT, and other AI assistants.",
+  "version": "0.2.0",
+  "description": "MCP server for MeiSIM USA: real US phone numbers for AI agents (read and send texts, buy numbers), plus travel eSIMs, from Claude, ChatGPT, Cursor and any MCP client.",
   "type": "module",
   "bin": {
     "meisimusa-mcp": "dist/cli.js",
@@ -25,6 +25,9 @@
   },
   "keywords": [
     "mcp",
+    "phone-number",
+    "sms",
+    "ai-agents",
     "model-context-protocol",
     "esim",
     "travel",

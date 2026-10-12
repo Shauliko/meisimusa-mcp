@@ -3,10 +3,13 @@
 // structuredContent — both required by the ChatGPT app review.
 //
 // Tool set:
-//   Discovery (read-only — also exposed in info-only / ChatGPT directory):
-//     search_plans, get_quote, search_us_numbers, search_sms_services
-//   Transactional + status (full server only — Claude / Grok / direct):
-//     purchase, get_activation, buy_sms_number, get_sms, topup_lookup, topup_start
+//   Retail, no key (also exposed in info-only / ChatGPT directory):
+//     search_plans, get_quote, search_us_numbers
+//   Retail, transactional (full server only, Claude / Grok / direct):
+//     purchase, get_activation, topup_lookup, topup_start
+//   Your numbers, API key required (full server only):
+//     get_account, get_number_pricing, buy_numbers, get_order,
+//     list_my_numbers, read_messages, wait_for_message, send_message
 
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -18,11 +21,16 @@ import { GET_QUOTE_NAME, getQuoteDescription, getQuoteInput, makeGetQuoteHandler
 import { PURCHASE_NAME, purchaseDescription, purchaseInput, makePurchaseHandler } from './tools/purchase.js';
 import { GET_ACTIVATION_NAME, getActivationDescription, getActivationInput, makeGetActivationHandler } from './tools/get_activation.js';
 import { SEARCH_US_NUMBERS_NAME, searchUsNumbersDescription, searchUsNumbersInput, makeSearchUsNumbersHandler } from './tools/search_us_numbers.js';
-import { SEARCH_SMS_SERVICES_NAME, searchSmsServicesDescription, searchSmsServicesInput, makeSearchSmsServicesHandler } from './tools/search_sms_services.js';
-import { BUY_SMS_NUMBER_NAME, buySmsNumberDescription, buySmsNumberInput, makeBuySmsNumberHandler } from './tools/buy_sms_number.js';
-import { GET_SMS_NAME, getSmsDescription, getSmsInput, makeGetSmsHandler } from './tools/get_sms.js';
 import { TOPUP_LOOKUP_NAME, topupLookupDescription, topupLookupInput, makeTopupLookupHandler } from './tools/topup_lookup.js';
 import { TOPUP_START_NAME, topupStartDescription, topupStartInput, makeTopupStartHandler } from './tools/topup_start.js';
+import { GET_ACCOUNT_NAME, getAccountDescription, getAccountInput, makeGetAccountHandler } from './tools/get_account.js';
+import { GET_NUMBER_PRICING_NAME, getNumberPricingDescription, getNumberPricingInput, makeGetNumberPricingHandler } from './tools/get_number_pricing.js';
+import { BUY_NUMBERS_NAME, buyNumbersDescription, buyNumbersInput, makeBuyNumbersHandler } from './tools/buy_numbers.js';
+import { GET_ORDER_NAME, getOrderDescription, getOrderInput, makeGetOrderHandler } from './tools/get_order.js';
+import { LIST_MY_NUMBERS_NAME, listMyNumbersDescription, listMyNumbersInput, makeListMyNumbersHandler } from './tools/list_my_numbers.js';
+import { READ_MESSAGES_NAME, readMessagesDescription, readMessagesInput, makeReadMessagesHandler } from './tools/read_messages.js';
+import { WAIT_FOR_MESSAGE_NAME, waitForMessageDescription, waitForMessageInput, makeWaitForMessageHandler } from './tools/wait_for_message.js';
+import { SEND_MESSAGE_NAME, sendMessageDescription, sendMessageInput, makeSendMessageHandler } from './tools/send_message.js';
 
 type ContentBlock = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string };
 type ToolResult = { content: ContentBlock[]; structuredContent?: Record<string, unknown>; isError?: boolean; };
@@ -51,13 +59,6 @@ const usNumbersOutput = {
   })),
   meta: metaShape,
 };
-const smsServicesOutput = {
-  services: z.array(z.object({
-    service_id: z.number(), name: z.string(), label: z.string(), capability: z.string(),
-    duration_days: z.number(), price: z.number(), currency: z.string(), featured: z.boolean(),
-  })),
-  meta: z.object({ total_results: z.number(), total_available: z.number(), source: z.string() }),
-};
 const purchaseOutput = {
   order_id: z.string(), status: z.string(), payment_url: z.string().nullable().optional(),
   receipt_url: z.string().nullable().optional(), message: z.string().optional(), error: z.string().optional(),
@@ -66,15 +67,6 @@ const purchaseOutput = {
 const activationOutput = {
   status: z.string(), qr_code_png_base64: z.string().nullable().optional(), activation_code: z.string().nullable().optional(),
   install_instructions: z.object({ ios: z.string(), android: z.string() }), expires_at: z.string().nullable().optional(),
-};
-const buySmsOutput = {
-  order_id: z.string(), status: z.string(), payment_url: z.string().nullable().optional(),
-  amount: z.number(), currency: z.string(), message: z.string().optional(), error: z.string().optional(),
-};
-const getSmsOutput = {
-  status: z.string(), assigned_number: z.string().nullable(), expires_at: z.string().nullable().optional(),
-  messages: z.array(z.object({ from: z.string(), body: z.string(), code: z.string().nullable(), received_at: z.string().nullable() })),
-  latest_code: z.string().nullable().optional(), note: z.string().optional(),
 };
 const topupLookupOutput = {
   lines: z.array(z.object({
@@ -92,6 +84,40 @@ const topupStartOutput = {
   order_id: z.string(), status: z.string(), payment_url: z.string().nullable().optional(),
   amount: z.number(), currency: z.string(), product: z.string().optional(), message: z.string().optional(), error: z.string().optional(),
 };
+
+// ── Your numbers (API key) ──
+const numberShape = z.object({
+  number: z.string(), e164: z.string(), label: z.string().nullable(), status: z.string(), voice: z.boolean(),
+  billing: z.string(), paid_through: z.string().nullable(), auto_renew: z.boolean(), stops_at_local: z.string().nullable(),
+  billing_note: z.string().nullable(), order_id: z.string().nullable(), customer_reference: z.string().nullable(),
+  last_message_at: z.string().nullable(),
+});
+const messageShape = z.object({ id: z.string(), number: z.string(), from: z.string(), text: z.string(), received_at: z.string().nullable() });
+const orderShape = {
+  order_id: z.string(), customer_reference: z.string().nullable(), status: z.string(),
+  ordered: z.number(), delivered: z.number(), outstanding: z.number(), numbers: z.array(z.string()),
+  billing: z.string(), voice: z.boolean(), days_paid: z.number().nullable(), charged_usd: z.number().nullable(),
+  refunded_usd: z.number(), created_at: z.string().nullable(), completed_at: z.string().nullable(),
+};
+const accountOutput = {
+  company: z.string().nullable(), email: z.string().nullable(), status: z.string().nullable(), balance_usd: z.number(),
+  currency: z.string(), daily_line_limit: z.number().nullable(), lines_remaining_today: z.number().nullable(), topup_note: z.string(),
+};
+const pricingOutput = {
+  can_order: z.boolean(), reason: z.string().optional(), currency: z.string(),
+  monthly: z.object({ first_month_usd: z.number().nullable(), renew_price_usd: z.number().nullable(), min_months: z.number(), voice_price_usd: z.number().nullable() }).optional(),
+  daily: z.object({
+    available: z.boolean(), price_usd: z.number().nullable(), voice_price_usd: z.number().nullable(), min_days: z.number().nullable(),
+    activation_fee_usd: z.number().nullable(), voice_activation_fee_usd: z.number().nullable(),
+    ready_now: z.object({ sms: z.number(), voice: z.number() }).nullable(), note: z.string().nullable(),
+  }).optional(),
+  voice_available: z.boolean().optional(), voice_note: z.string().nullable().optional(),
+};
+const buyNumbersOutput = { ...orderShape, duplicate: z.boolean(), note: z.string() };
+const listNumbersOutput = { numbers: z.array(numberShape), total: z.number(), next_offset: z.number().nullable(), incoming: z.array(z.any()).optional(), note: z.string().optional() };
+const readMessagesOutput = { messages: z.array(messageShape), count: z.number(), newest_received_at: z.string().nullable(), note: z.string().optional() };
+const waitOutput = { received: z.boolean(), messages: z.array(messageShape), waited_seconds: z.number(), since: z.string(), note: z.string().optional() };
+const sendOutput = { sent: z.boolean(), from: z.string(), to: z.string(), note: z.string().nullable() };
 
 function guard<A>(fn: (args: A) => Promise<ToolResult>) {
   return async (args: A): Promise<ToolResult> => {
@@ -118,9 +144,6 @@ export function buildServer(cfg: Config): McpServer {
   server.registerTool(SEARCH_US_NUMBERS_NAME,
     { title: 'Search US phone-number plans', description: searchUsNumbersDescription, inputSchema: searchUsNumbersInput, outputSchema: usNumbersOutput, annotations: RO },
     guard(makeSearchUsNumbersHandler(cfg)));
-  server.registerTool(SEARCH_SMS_SERVICES_NAME,
-    { title: 'Search SMS-verification services', description: searchSmsServicesDescription, inputSchema: searchSmsServicesInput, outputSchema: smsServicesOutput, annotations: RO },
-    guard(makeSearchSmsServicesHandler(cfg)));
 
   if (cfg.infoOnly) return server;
 
@@ -131,18 +154,38 @@ export function buildServer(cfg: Config): McpServer {
   server.registerTool(GET_ACTIVATION_NAME,
     { title: 'Get activation QR', description: getActivationDescription, inputSchema: getActivationInput, outputSchema: activationOutput, annotations: RO },
     guard(makeGetActivationHandler(cfg)));
-  server.registerTool(BUY_SMS_NUMBER_NAME,
-    { title: 'Buy an SMS verification number', description: buySmsNumberDescription, inputSchema: buySmsNumberInput, outputSchema: buySmsOutput, annotations: RW },
-    guard(makeBuySmsNumberHandler(cfg)));
-  server.registerTool(GET_SMS_NAME,
-    { title: 'Read received SMS / code', description: getSmsDescription, inputSchema: getSmsInput, outputSchema: getSmsOutput, annotations: RO },
-    guard(makeGetSmsHandler(cfg)));
   server.registerTool(TOPUP_LOOKUP_NAME,
     { title: 'Look up a line to top up', description: topupLookupDescription, inputSchema: topupLookupInput, outputSchema: topupLookupOutput, annotations: RO },
     guard(makeTopupLookupHandler(cfg)));
   server.registerTool(TOPUP_START_NAME,
     { title: 'Start a top-up', description: topupStartDescription, inputSchema: topupStartInput, outputSchema: topupStartOutput, annotations: RW },
     guard(makeTopupStartHandler(cfg)));
+
+  // ── Your numbers (API key; the key is the account) ──
+  server.registerTool(GET_ACCOUNT_NAME,
+    { title: 'My MeiSIM account and balance', description: getAccountDescription, inputSchema: getAccountInput, outputSchema: accountOutput, annotations: RO },
+    guard(makeGetAccountHandler(cfg)));
+  server.registerTool(GET_NUMBER_PRICING_NAME,
+    { title: 'Price of a new number', description: getNumberPricingDescription, inputSchema: getNumberPricingInput, outputSchema: pricingOutput, annotations: RO },
+    guard(makeGetNumberPricingHandler(cfg)));
+  server.registerTool(BUY_NUMBERS_NAME,
+    { title: 'Buy US numbers (wallet)', description: buyNumbersDescription, inputSchema: buyNumbersInput, outputSchema: buyNumbersOutput, annotations: RW },
+    guard(makeBuyNumbersHandler(cfg)));
+  server.registerTool(GET_ORDER_NAME,
+    { title: 'Check a number order', description: getOrderDescription, inputSchema: getOrderInput, outputSchema: orderShape, annotations: RO },
+    guard(makeGetOrderHandler(cfg)));
+  server.registerTool(LIST_MY_NUMBERS_NAME,
+    { title: 'List my numbers', description: listMyNumbersDescription, inputSchema: listMyNumbersInput, outputSchema: listNumbersOutput, annotations: RO },
+    guard(makeListMyNumbersHandler(cfg)));
+  server.registerTool(READ_MESSAGES_NAME,
+    { title: 'Read received texts', description: readMessagesDescription, inputSchema: readMessagesInput, outputSchema: readMessagesOutput, annotations: RO },
+    guard(makeReadMessagesHandler(cfg)));
+  server.registerTool(WAIT_FOR_MESSAGE_NAME,
+    { title: 'Wait for the next text', description: waitForMessageDescription, inputSchema: waitForMessageInput, outputSchema: waitOutput, annotations: RO },
+    guard(makeWaitForMessageHandler(cfg)));
+  server.registerTool(SEND_MESSAGE_NAME,
+    { title: 'Send a text', description: sendMessageDescription, inputSchema: sendMessageInput, outputSchema: sendOutput, annotations: RW },
+    guard(makeSendMessageHandler(cfg)));
 
   return server;
 }
