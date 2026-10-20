@@ -50,7 +50,7 @@ export type SearchPlansArgs = z.infer<typeof schema>;
 // the user searched for, the vendor, and coverage breadth). get_quote/purchase
 // keep using the bare NormalizedPlan — these extra fields live only here.
 type SearchPlan = NormalizedPlan & {
-  vendor: string;
+  vendor?: string;
   coverage: 'country' | 'regional';
   coverage_countries: number;
   buy_url?: string;
@@ -113,13 +113,14 @@ export function makeSearchPlansHandler(cfg: Config) {
     // so `country`/`country_name` reflect what the user asked for — NOT the
     // plan's first alphabetical coverage country. The vendor moves to its own
     // field, and we flag whether a plan is country-specific or regional.
+    // The supplier label stays off the public directory build.
     let plans: SearchPlan[] = items.map(({ rp, plan }) => {
       const n = coverageCount(rp);
       return {
         ...plan,
         country: iso,
         country_name: countryName,
-        vendor: rp.providerName || '',
+        ...(cfg.directory ? {} : { vendor: rp.providerName || '' }),
         coverage: (n <= 3 ? 'country' : 'regional') as 'country' | 'regional',
         coverage_countries: n,
       };

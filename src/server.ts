@@ -44,6 +44,13 @@ const planShape = {
   plan_id: z.string(), country: z.string(), country_name: z.string(), data_gb: z.number().nullable(),
   duration_days: z.number(), price: z.number(), currency: z.string(),
   network_carriers: z.array(z.string()), unlimited_voice: z.boolean().optional(), notes: z.string().optional(),
+  // search_plans adds these (strict clients reject undeclared fields):
+  // coverage = country-specific or regional; coverage_countries = how many
+  // countries the plan covers; vendor = the catalog supplier label, returned
+  // on /mcp and /mcp-info only, never on the public directory build.
+  coverage: z.enum(['country', 'regional']).optional(),
+  coverage_countries: z.number().int().optional(),
+  vendor: z.string().optional(),
   // Directory build only: where a person buys this exact plan on the website.
   buy_url: z.string().optional(),
 };

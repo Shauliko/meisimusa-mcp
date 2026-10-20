@@ -61,6 +61,24 @@ describe('buy links', () => {
     for (const p of r.plans) expect(p.buy_url).toBe(buyUrl(cfg, p.plan_id, { country: 'IT' }));
     expect(r.how_to_buy).toMatch(/meisimusa\.com/);
   });
+  it('search_plans: no supplier name on the directory build, coverage fields kept', async () => {
+    const r = sc(await makeSearchPlansHandler(cfg)({ country_code: 'IT', duration_days: 5, sort_by: 'price' }));
+    for (const p of r.plans) {
+      expect(p.vendor).toBeUndefined();
+      expect(['country', 'regional']).toContain(p.coverage);
+      expect(Number.isInteger(p.coverage_countries)).toBe(true);
+    }
+    const full = sc(await makeSearchPlansHandler({ ...cfg, directory: false, apiKey: undefined })({ country_code: 'IT', duration_days: 5, sort_by: 'price' }));
+    expect(full.plans.some((p: any) => typeof p.vendor === 'string')).toBe(true);
+  });
+  it('every plan field search_plans returns is declared in the output schema (strict clients)', async () => {
+    for (const c of [cfg, { ...cfg, directory: false, apiKey: undefined }]) {
+      const schema = tools(c)['search_plans'].outputSchema as any;
+      const item = schema.shape.plans.element.strict();
+      const r = sc(await makeSearchPlansHandler(c)({ country_code: 'IT', duration_days: 5, sort_by: 'price' }));
+      for (const p of r.plans) expect(item.safeParse(p).success, JSON.stringify(p)).toBe(true);
+    }
+  });
   it('search_us_numbers: every plan carries buy_url on the US tab', async () => {
     const r = sc(await makeSearchUsNumbersHandler(cfg)({}));
     expect(r.plans.length).toBeGreaterThan(0);
