@@ -48,6 +48,7 @@ describe('directory tool set', () => {
       expect(t.title, name).toBeTruthy();
       expect(t.annotations?.readOnlyHint, name).toBe(true);
       expect(t.annotations?.destructiveHint, name).toBe(false);
+      expect(t.annotations?.title, name).toBe(t.title);
     }
   });
   it('tool text sends buyers to the link, never to a purchase tool', () => {

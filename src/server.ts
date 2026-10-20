@@ -166,17 +166,20 @@ export function buildServer(cfg: Config): McpServer {
   // account. ──
   if (cfg.directory) {
     const dcfg: Config = { ...cfg, apiKey: undefined, directory: true };
+    // The directory listing reads annotations.title; the top-level title is
+    // what clients show. Same text in both.
+    const dir = (title: string) => ({ title, annotations: { ...RO, title } });
     server.registerTool(GET_AI_LINE_OFFER_NAME,
-      { title: 'Get the AI phone-line offer', description: getAiLineOfferDescription, inputSchema: getAiLineOfferInput, outputSchema: aiLineOfferOutput, annotations: RO },
+      { ...dir('Get the AI phone-line offer'), description: getAiLineOfferDescription, inputSchema: getAiLineOfferInput, outputSchema: aiLineOfferOutput },
       guard(makeGetAiLineOfferHandler(dcfg)));
     server.registerTool(SEARCH_US_NUMBERS_NAME,
-      { title: 'Search US phone-number plans', description: searchUsNumbersDirectoryDescription, inputSchema: searchUsNumbersInput, outputSchema: usNumbersOutput, annotations: RO },
+      { ...dir('Search US phone-number plans'), description: searchUsNumbersDirectoryDescription, inputSchema: searchUsNumbersInput, outputSchema: usNumbersOutput },
       guard(makeSearchUsNumbersHandler(dcfg)));
     server.registerTool(SEARCH_PLANS_NAME,
-      { title: 'Search travel eSIM plans', description: searchPlansDirectoryDescription, inputSchema: searchPlansInput, outputSchema: searchPlansOutput, annotations: RO },
+      { ...dir('Search travel eSIM plans'), description: searchPlansDirectoryDescription, inputSchema: searchPlansInput, outputSchema: searchPlansOutput },
       guard(makeSearchPlansHandler(dcfg)));
     server.registerTool(GET_QUOTE_NAME,
-      { title: 'Get a price quote and buy link', description: getQuoteDirectoryDescription, inputSchema: getQuoteInput, outputSchema: getQuoteOutput, annotations: RO },
+      { ...dir('Get a price quote and buy link'), description: getQuoteDirectoryDescription, inputSchema: getQuoteInput, outputSchema: getQuoteOutput },
       guard(makeGetQuoteHandler(dcfg)));
     return server;
   }
