@@ -40,12 +40,15 @@ export function makeGetQuoteHandler(cfg: Config) {
     }
 
     const price = plan.price;
-    const us = String(plan.plan_id).startsWith('p3:');
+    // Directory build: the link carries the plan id only. A regional plan's
+    // `country` is its first coverage country (often not the one searched),
+    // and plans.html opens `?buy=<id>` from the full list without it.
+    const link = cfg.directory ? buyUrl(cfg, plan.plan_id, { us: String(plan.plan_id).startsWith('p3:') }) : undefined;
     const result = {
-      plan: cfg.directory ? { ...plan, buy_url: buyUrl(cfg, plan.plan_id, { country: plan.country, us }) } : plan,
+      plan: link ? { ...plan, buy_url: link } : plan,
       total: { subtotal: price, taxes: 0, fees: 0, final: price, currency: plan.currency },
       quote_expires_at: new Date(Date.now() + QUOTE_TTL_MINUTES * 60 * 1000).toISOString(),
-      ...(cfg.directory ? { buy_url: buyUrl(cfg, plan.plan_id, { country: plan.country, us }), how_to_buy: HOW_TO_BUY } : {}),
+      ...(link ? { buy_url: link, how_to_buy: HOW_TO_BUY } : {}),
     };
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],

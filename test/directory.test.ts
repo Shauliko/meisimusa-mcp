@@ -70,7 +70,8 @@ describe('buy links', () => {
   it('get_quote: buy_url on the plan and at the top level', async () => {
     const list = sc(await makeSearchPlansHandler(cfg)({ country_code: 'IT', duration_days: 5, sort_by: 'price' }));
     const r = sc(await makeGetQuoteHandler(cfg)({ plan_id: list.plans[0].plan_id }));
-    expect(r.plan.buy_url).toContain('/plans.html?');
+    expect(r.plan.buy_url).toBe(buyUrl(cfg, list.plans[0].plan_id));
+    expect(r.plan.buy_url).not.toContain('country=');
     expect(r.buy_url).toBe(r.plan.buy_url);
     expect(r.total.final).toBe(r.plan.price);
     expect(r.how_to_buy).toMatch(/meisimusa\.com/);
