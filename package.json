@@ -9,6 +9,7 @@
   },
   "files": [
     "dist",
+    "static",
     "README.md"
   ],
   "engines": {

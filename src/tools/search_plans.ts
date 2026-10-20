@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import type { Config } from '../config.js';
 import { callBackend } from '../http.js';
-import { normalizePlan, buyUrl, HOW_TO_BUY, type NormalizedPlan, type RetailProduct } from '../retail.js';
+import { normalizePlan, buyUrl, coverageCount, isoToCountryName, HOW_TO_BUY, type NormalizedPlan, type RetailProduct } from '../retail.js';
 
 export const SEARCH_PLANS_NAME = 'search_plans';
 
@@ -15,12 +15,12 @@ export const searchPlansDescription =
   '(e.g. "5GB in Italy for 10 days"). Returns a plan_id to pass to get_quote / purchase.';
 
 // Directory build: same search, but the way to buy is the link, not a tool.
+// Directory build: the exact listing text. Says what the tool returns and who it is for; nothing about other tools.
 export const searchPlansDirectoryDescription =
-  'Travel eSIM data plans for a destination country, MeiSIM\'s second product after US phone lines for AI agents. ' +
-  'Returns plans with data allowance, validity in days, USD price, and a buy_url that opens that exact plan on ' +
-  'meisimusa.com. Use it when a person wants mobile data for a trip (e.g. "5GB in Italy for 10 days"); for a phone ' +
-  'line for an AI agent use get_ai_line_offer instead. This connector cannot buy anything: when the user wants to ' +
-  'purchase, give them the buy_url.';
+  'Travel eSIM data plans that work in a destination country, cheapest first by default: data allowance, validity ' +
+  'in days, USD price, coverage (one country, or a regional plan and how many countries it covers) and a buy_url ' +
+  'that opens that exact plan on meisimusa.com. For a person who wants mobile data for a trip, such as 5 GB in ' +
+  'Italy for 10 days. Read-only: it cannot buy anything; purchases happen on meisimusa.com.';
 
 export const searchPlansInput = {
   country_code: z
@@ -44,48 +44,39 @@ export const searchPlansInput = {
     .describe('Result ordering. "price" = cheapest first (default).'),
 };
 
+// Directory build adds a page size (policy: be frugal with tokens). /mcp and /mcp-info keep the original input.
+export const searchPlansDirectoryInput = {
+  ...searchPlansInput,
+  limit: z.number().int().min(1).max(50).default(10).describe('How many plans to return, 1 to 50 (default 10). meta.total_results is the count before this limit.'),
+};
+
 const schema = z.object(searchPlansInput);
-export type SearchPlansArgs = z.infer<typeof schema>;
+export type SearchPlansArgs = z.infer<typeof schema> & { limit?: number };
 
 // A search result is a normalized plan plus search-context fields (the country
 // the user searched for, the vendor, and coverage breadth). get_quote/purchase
 // keep using the bare NormalizedPlan — these extra fields live only here.
-type SearchPlan = NormalizedPlan & {
+type SearchPlan = Omit<NormalizedPlan, 'country' | 'country_name' | 'currency' | 'network_carriers'> & {
+  country?: string;
+  country_name?: string;
+  currency?: 'USD';
+  network_carriers?: string[];
   vendor?: string;
   coverage: 'country' | 'regional';
   coverage_countries: number;
   buy_url?: string;
 };
 
-function sortPlans<T extends NormalizedPlan>(plans: T[], by: SearchPlansArgs['sort_by']): T[] {
+function sortPlans<T extends Pick<NormalizedPlan, 'price' | 'duration_days' | 'data_gb'>>(plans: T[], by: SearchPlansArgs['sort_by']): T[] {
   const copy = [...plans];
   if (by === 'price') copy.sort((a, b) => a.price - b.price);
   else if (by === 'duration') copy.sort((a, b) => a.duration_days - b.duration_days);
   else if (by === 'data_per_dollar') {
-    const score = (p: NormalizedPlan) =>
+    const score = (p: Pick<NormalizedPlan, 'price' | 'data_gb'>) =>
       p.data_gb == null ? Number.POSITIVE_INFINITY : p.price > 0 ? p.data_gb / p.price : 0;
     copy.sort((a, b) => score(b) - score(a));
   }
   return copy;
-}
-
-// Number of countries a plan covers. The backend's `countries` array mixes ISO
-// codes with full names (e.g. ["IT","Italy"]), so we count the ISO entries; if
-// none are present we fall back to the raw list length.
-function coverageCount(rp: RetailProduct): number {
-  const list = rp.countries || [];
-  const isoCount = list.filter((c) => /^[A-Za-z]{2}$/.test(String(c))).length;
-  return isoCount || list.length;
-}
-
-// English country name from an ISO code via the built-in Intl API (Node 18+,
-// no dependency). Falls back to the raw code if the lookup fails.
-function isoToCountryName(iso: string): string {
-  try {
-    return new Intl.DisplayNames(['en'], { type: 'region' }).of(iso) || iso;
-  } catch {
-    return iso;
-  }
 }
 
 export function makeSearchPlansHandler(cfg: Config) {
@@ -117,26 +108,45 @@ export function makeSearchPlansHandler(cfg: Config) {
     // The supplier label stays off the public directory build.
     let plans: SearchPlan[] = items.map(({ rp, plan }) => {
       const n = coverageCount(rp);
+      if (cfg.directory) {
+        // Directory build: nothing that repeats the request (country, currency) or is empty.
+        const { country: _c, country_name: _cn, currency: _cur, network_carriers, ...rest } = plan;
+        return {
+          ...rest,
+          ...(network_carriers.length ? { network_carriers } : {}),
+          coverage: (n <= 3 ? 'country' : 'regional') as 'country' | 'regional',
+          coverage_countries: n,
+        };
+      }
       return {
         ...plan,
         country: iso,
         country_name: countryName,
-        ...(cfg.directory ? {} : { vendor: rp.providerName || '' }),
+        vendor: rp.providerName || '',
         coverage: (n <= 3 ? 'country' : 'regional') as 'country' | 'regional',
         coverage_countries: n,
       };
     });
 
     plans = sortPlans(plans, args.sort_by);
-    if (cfg.directory) plans = plans.map((p) => ({ ...p, buy_url: buyUrl(cfg, p.plan_id, { country: iso }) }));
+    const total = plans.length;
+    if (cfg.directory) {
+      plans = plans.slice(0, args.limit ?? 10).map((p) => ({ ...p, buy_url: buyUrl(cfg, p.plan_id, { country: iso }) }));
+    }
 
-    const result = {
-      plans,
-      meta: { total_results: plans.length, returned_at: new Date().toISOString(), source: 'meisimusa' as const },
-      ...(cfg.directory ? { how_to_buy: HOW_TO_BUY } : {}),
-    };
+    const result = cfg.directory
+      ? {
+          currency: 'USD' as const,
+          plans,
+          meta: { total_results: total, returned_at: new Date().toISOString(), source: 'meisimusa' as const },
+          how_to_buy: HOW_TO_BUY,
+        }
+      : {
+          plans,
+          meta: { total_results: total, returned_at: new Date().toISOString(), source: 'meisimusa' as const },
+        };
     return {
-      content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+      content: [{ type: 'text' as const, text: cfg.directory ? JSON.stringify(result) : JSON.stringify(result, null, 2) }],
       structuredContent: result,
     };
   };

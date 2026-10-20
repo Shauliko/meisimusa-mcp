@@ -10,14 +10,15 @@ import { callBackend } from '../http.js';
 
 export const GET_AI_LINE_OFFER_NAME = 'get_ai_line_offer';
 
+// The exact directory listing text. What it returns and who it is for; nothing about other tools.
 export const getAiLineOfferDescription =
-  'The current offer for real US phone lines for AI agents: monthly price per number for texts, and with voice over ' +
-  'SIP; the first-term minimum; what a line includes (a real US mobile number on a national carrier, inbound texts to ' +
-  'a webhook or over the API, voice over SIP with the number as caller ID, one call at a time, outbound calls to US ' +
-  'numbers only); delivery time; payment methods; how many numbers are ready in stock right now; and the links to ' +
-  'apply and to the API docs. Use this first when someone is building a voice agent, a phone assistant, a companion ' +
-  'app or SMS customer service and asks what a line costs or how to get one. Takes no input. This connector cannot ' +
-  'open an account or buy a line: send the user to apply_url.';
+  'MeiSIM\'s current offer for real US phone lines used by AI agents: the monthly price per number for texts, and ' +
+  'for texts plus voice over SIP; the first-term minimum; what a line includes (a real US mobile number on a national ' +
+  'carrier, inbound texts to a webhook or over the API, voice over SIP with the number as caller ID, one call at a ' +
+  'time, outbound calls to US numbers only); delivery time; payment methods; how many numbers are ready now; and ' +
+  'links to apply and to the API docs. For people building voice agents, phone assistants, companion apps or SMS ' +
+  'customer service who ask what a line costs, what it includes or how to get one. Takes no input. Read-only: it ' +
+  'cannot open an account or order a line.';
 
 export const getAiLineOfferInput = {};
 
@@ -69,6 +70,6 @@ export function makeGetAiLineOfferHandler(cfg: Config) {
         'Apply at apply_url (a person approves the account, usually the same day), then order numbers by API or from ' +
         'the dashboard. This connector only reads the offer; it cannot open an account or buy a line.',
     };
-    return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], structuredContent: result };
+    return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], structuredContent: result };
   };
 }

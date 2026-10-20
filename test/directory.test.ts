@@ -53,8 +53,11 @@ describe('directory tool set', () => {
   });
   it('tool text sends buyers to the link, never to a purchase tool', () => {
     for (const [name, t] of Object.entries(tools(cfg))) {
-      expect(t.description, name).toMatch(/buy_url|apply_url/);
+      expect(t.description, name).toMatch(/buy_url|links to apply/);
       expect(t.description, name).toMatch(/cannot buy|cannot open an account/);
+      // the listing text describes the tool only: no other tool's name, no steering
+      for (const other of Object.keys(tools(cfg))) if (other !== name) expect(t.description, name).not.toContain(other);
+      expect(t.description, name).not.toMatch(/\binstead\b|use this first|start with/i);
       // the full build's phrasing points at the purchase tool; the directory text must not
       expect(t.description, name).not.toMatch(/get_quote \/ purchase|for purchase|before purchase|purchase tool/i);
     }
@@ -136,6 +139,7 @@ describe('buy links', () => {
     const r = sc(await makeGetQuoteHandler(cfg)({ plan_id: list.plans[0].plan_id }));
     expect(r.plan.buy_url).toBe(buyUrl(cfg, list.plans[0].plan_id));
     expect(r.plan.buy_url).not.toContain('country=');
+    expect(r.plan.currency).toBeUndefined();
     expect(r.buy_url).toBe(r.plan.buy_url);
     expect(r.total.final).toBe(r.plan.price);
     expect(r.how_to_buy).toMatch(/meisimusa\.com/);
@@ -148,5 +152,134 @@ describe('buy links', () => {
     const names = Object.keys(tools(plain));
     expect(names).toContain('purchase');
     expect(names).toContain('send_message');
+  });
+});
+
+const IT = { country_code: 'IT', duration_days: 5, sort_by: 'price' as const };
+const strictOut = (name: string, c: Config = cfg) => {
+  const o = tools(c)[name].outputSchema as any;
+  const deep = (z: any): any => {
+    if (z?._def?.typeName === 'ZodObject') { const sh: any = {}; for (const [k, v] of Object.entries(z.shape)) sh[k] = deep(v); return z.constructor.create(sh).strict(); }
+    if (z?._def?.typeName === 'ZodArray') return z.constructor.create(deep(z.element));
+    if (z?._def?.typeName === 'ZodOptional' || z?._def?.typeName === 'ZodNullable' || z?._def?.typeName === 'ZodDefault') return new z.constructor({ ...z._def, innerType: deep(z._def.innerType) });
+    return z;
+  };
+  return deep(o);
+};
+
+describe('directory: frugal results', () => {
+  it('search_plans: limit defaults to 10, total_results counts everything, currency once at the top', async () => {
+    const r = sc(await makeSearchPlansHandler(cfg)({ ...IT }));
+    expect(r.currency).toBe('USD');
+    expect(r.plans.length).toBeLessThanOrEqual(10);
+    expect(r.meta.total_results).toBeGreaterThanOrEqual(r.plans.length);
+    const two = sc(await makeSearchPlansHandler(cfg)({ ...IT, limit: 2 }));
+    expect(two.plans.length).toBe(2);
+    expect(two.meta.total_results).toBe(r.meta.total_results);
+    for (const p of r.plans) {
+      expect(p.country).toBeUndefined();
+      expect(p.country_name).toBeUndefined();
+      expect(p.currency).toBeUndefined();
+      if (p.network_carriers) expect(p.network_carriers.length).toBeGreaterThan(0);
+    }
+    expect(strictOut('search_plans').safeParse(r).success, JSON.stringify(strictOut('search_plans').safeParse(r))).toBe(true);
+  });
+  it('search_plans: the text block is compact JSON, not pretty-printed', async () => {
+    const res: any = await makeSearchPlansHandler(cfg)({ ...IT });
+    expect(res.content[0].text).not.toMatch(/\n  /);
+    expect(JSON.parse(res.content[0].text)).toEqual(res.structuredContent);
+  });
+  it('search_us_numbers: limit, currency once, strict schema', async () => {
+    const r = sc(await makeSearchUsNumbersHandler(cfg)({ limit: 2 }));
+    expect(r.currency).toBe('USD');
+    expect(r.plans.length).toBe(2);
+    expect(r.meta.total_results).toBeGreaterThan(2);
+    for (const p of r.plans) expect(p.currency).toBeUndefined();
+    const all = sc(await makeSearchUsNumbersHandler(cfg)({}));
+    expect(strictOut('search_us_numbers').safeParse(all).success, JSON.stringify(strictOut('search_us_numbers').safeParse(all))).toBe(true);
+  });
+  it('/mcp keeps the old shape: currency per plan, vendor, no limit', async () => {
+    const plain = { ...cfg, directory: false, apiKey: undefined };
+    const r = sc(await makeSearchPlansHandler(plain)({ ...IT }));
+    expect(r.currency).toBeUndefined();
+    for (const p of r.plans) { expect(p.currency).toBe('USD'); expect(p.country).toBe('IT'); expect(typeof p.vendor).toBe('string'); }
+    const us = sc(await makeSearchUsNumbersHandler(plain)({}));
+    for (const p of us.plans) expect(p.currency).toBe('USD');
+    expect(Object.keys(tools(plain)['search_plans'].inputSchema)).not.toContain('limit');
+    expect(Object.keys(tools(plain)['get_quote'].inputSchema)).not.toContain('country_code');
+  });
+});
+
+describe('directory: numbers that match reality', () => {
+  it('US plans: data from the title when the detail says "See plan", 1,000 MB per GB, null when unknown', async () => {
+    const r = sc(await makeSearchUsNumbersHandler(cfg)({ limit: 50 }));
+    const by = (id: string) => r.plans.find((p: any) => p.plan_id === id);
+    expect(by('p3:445:771').data_gb).toBe(1);
+    expect(by('p3:445:747').data_gb).toBe(0.5);
+    expect(by('p3:8:796').data_gb).toBe(5);
+    expect(by('p3:445:799').data_gb).toBeNull();
+    for (const p of r.plans) expect(p.data_gb).not.toBe(0);
+  });
+  it('US plans: "100 SMS Only" is 100 texts and no voice; "0" with nothing in the title is null', async () => {
+    const r = sc(await makeSearchUsNumbersHandler(cfg)({ limit: 50 }));
+    const by = (id: string) => r.plans.find((p: any) => p.plan_id === id);
+    expect(by('p3:445:799').sms).toBe('100');
+    expect(by('p3:445:799').voice).toBe('None');
+    expect(by('p3:8:796').voice).toBeNull();
+    expect(by('p3:8:796').sms).toBeNull();
+    expect(by('p3:445:771').voice).toBe('Unlimited');
+    for (const p of r.plans) { expect(p.sms).not.toBe('0'); expect(p.voice).not.toBe('0'); }
+  });
+  it('p2 plans: 10,000 MB is 10 GB and "1.95 GB" on a 2GB plan is 2 GB, in data_gb and in notes', async () => {
+    const r = sc(await makeSearchPlansHandler(cfg)({ ...IT, limit: 50 }));
+    const by = (id: string) => r.plans.find((p: any) => p.plan_id === id);
+    expect(by('p2:SIMplyg_10GB_30D_IT_V2').data_gb).toBe(10);
+    expect(by('p2:SIMplyg_10GB_30D_IT_V2').notes).toBe('10 GB · 30 days · Italy');
+    expect(by('p2:SIMplyg_2GB_15D_IT_V2').data_gb).toBe(2);
+    expect(by('p2:SIMplyg_2GB_15D_IT_V2').notes).toBe('2 GB · 15 days · Italy');
+    for (const p of r.plans) expect(p.data_gb).not.toBe(0);
+  });
+});
+
+describe('directory: get_quote on a regional plan', () => {
+  const REGIONAL = 'c7105b7e-6519-4e4e-b5da-141f2e5e5e30';
+  it('without country_code: coverage fields, no country fields, no network as a country name', async () => {
+    const r = sc(await makeGetQuoteHandler(cfg)({ plan_id: REGIONAL }));
+    expect(r.plan.coverage).toBe('regional');
+    expect(r.plan.coverage_countries).toBe(36);
+    expect(r.plan.country).toBeUndefined();
+    expect(r.plan.country_name).toBeUndefined();
+    expect(JSON.stringify(r)).not.toContain('Sparks');
+    expect(r.buy_url).toBe(buyUrl(cfg, REGIONAL));
+    expect(r.total.currency).toBe('USD');
+    expect(strictOut('get_quote').safeParse(r).success, JSON.stringify(strictOut('get_quote').safeParse(r))).toBe(true);
+  });
+  it('with country_code IT: labelled Italy and the buy page opens for Italy', async () => {
+    const r = sc(await makeGetQuoteHandler(cfg)({ plan_id: REGIONAL, country_code: 'it' }));
+    expect(r.plan.country).toBe('IT');
+    expect(r.plan.country_name).toBe('Italy');
+    expect(r.plan.coverage).toBe('regional');
+    expect(r.buy_url).toBe(buyUrl(cfg, REGIONAL, { country: 'IT' }));
+    expect(r.plan.buy_url).toBe(r.buy_url);
+    expect(strictOut('get_quote').safeParse(r).success).toBe(true);
+  });
+  it('with a country the plan does not cover: a tool error, not a wrong label', async () => {
+    const g = (buildServer(cfg) as any)._registeredTools['get_quote'];
+    const fn = g.handler || g.callback;
+    const res = await fn({ plan_id: REGIONAL, country_code: 'US' }, {});
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toMatch(/invalid_input/);
+  });
+  it('a one-country plan keeps its own country', async () => {
+    const r = sc(await makeGetQuoteHandler(cfg)({ plan_id: 'mm_IT_1gb_7d' }));
+    expect(r.plan.country).toBe('IT');
+    expect(r.plan.country_name).toBe('Italy');
+    expect(r.plan.coverage).toBe('country');
+  });
+  it('/mcp get_quote is unchanged: the plain plan with currency, no coverage fields', async () => {
+    const r = sc(await makeGetQuoteHandler({ ...cfg, directory: false, apiKey: undefined })({ plan_id: REGIONAL }));
+    expect(r.plan.currency).toBe('USD');
+    expect(r.plan.coverage).toBeUndefined();
+    expect(r.buy_url).toBeUndefined();
   });
 });

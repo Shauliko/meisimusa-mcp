@@ -55,16 +55,67 @@ export function detail(p: RetailProduct, ...names: string[]): string {
   return '';
 }
 
+// Data allowance in GB. 1,000 MB = 1 GB (the catalog's "9.77 GB" for a 10 GB
+// plan came from dividing by 1024). A detail that is not a number ("See plan")
+// falls back to the plan title ("Talk, Text & 1GB", "500 MBs"); a p2 plan id
+// names its size ("_2GB_") and wins over a rounded detail ("1.95 GB").
+// Returns null when the plan is unlimited OR the size is unknown: never 0.
+const DATA_TOKEN = /(\d+(?:\.\d+)?)\s*(gb|mbs?)\b/i;
+function gbFromToken(m: RegExpMatchArray | null): number | null {
+  if (!m) return null;
+  const n = parseFloat(m[1] ?? '');
+  if (!Number.isFinite(n)) return null;
+  const unit = (m[2] || 'gb').toLowerCase();
+  return unit.startsWith('mb') ? Math.round((n / 1000) * 100) / 100 : n;
+}
 export function parseDataGb(p: RetailProduct): number | null {
   const raw = detail(p, 'PLAN_DATA_LIMIT', 'DATA', 'PLAN_DATA_QUOTA', 'PLAN_DATA', 'DATA_LIMIT');
-  if (!raw) return 0;
-  if (/unlimited|^ul$|\bUL_/i.test(raw)) return null;
-  const m = raw.match(/([\d.]+)\s*(gb|mb)?/i);
-  if (!m) return 0;
-  const n = parseFloat(m[1] ?? '0');
-  if (!Number.isFinite(n)) return 0;
-  const unit = (m[2] || 'gb').toLowerCase();
-  return unit === 'mb' ? Math.round((n / 1024) * 100) / 100 : n;
+  const title = detail(p, 'PLAN_TITLE', 'TITLE');
+  if (/unlimited|^ul$|\bUL_/i.test(raw) || (!raw.trim() && /unlimited/i.test(title))) return null;
+  // A bare number in the detail is GB unless PLAN_DATA_UNIT says otherwise.
+  let gb: number | null = null;
+  const bare = raw.trim().match(/^(\d+(?:\.\d+)?)$/);
+  if (bare) {
+    const n = parseFloat(bare[1] ?? '');
+    gb = /^mb/i.test(detail(p, 'PLAN_DATA_UNIT')) ? Math.round((n / 1000) * 100) / 100 : n;
+  } else {
+    gb = gbFromToken(raw.match(DATA_TOKEN));
+  }
+  if (gb == null) gb = gbFromToken(title.match(DATA_TOKEN));
+  const idGb = String(p.productId || '').match(/_(\d+)GB_/i);
+  if (idGb && gb != null) {
+    const n = Number(idGb[1]);
+    if (n > 0 && Math.abs(gb - n) / n <= 0.05) gb = n;
+  }
+  return gb;
+}
+
+// Number of countries a plan covers. The backend's `countries` array mixes ISO
+// codes with full names (e.g. ["IT","Italy"]), so we count the ISO entries; if
+// none are present we fall back to the raw list length.
+export function coverageCount(p: RetailProduct): number {
+  const list = p.countries || [];
+  const isoCount = list.filter((c) => /^[A-Za-z]{2}$/.test(String(c))).length;
+  return isoCount || list.length;
+}
+export function coverageOf(p: RetailProduct): 'country' | 'regional' {
+  return coverageCount(p) <= 3 ? 'country' : 'regional';
+}
+/** True when the plan's country list names this ISO code (lists without ISO codes cannot say). */
+export function coversIso(p: RetailProduct, iso: string): boolean | null {
+  const list = (p.countries || []).map((c) => String(c));
+  if (!list.some((c) => /^[A-Za-z]{2}$/.test(c))) return null;
+  return list.some((c) => c.toUpperCase() === iso.toUpperCase());
+}
+
+// English country name from an ISO code via the built-in Intl API (Node 18+,
+// no dependency). Falls back to the raw code if the lookup fails.
+export function isoToCountryName(iso: string): string {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(iso) || iso;
+  } catch {
+    return iso;
+  }
 }
 
 export function parseDurationDays(p: RetailProduct): number {
@@ -95,6 +146,10 @@ export function normalizePlan(p: RetailProduct): NormalizedPlan | null {
   const voiceRaw = detail(p, 'VOICE', 'PLAN_VOICE', 'MINUTES');
   const carriersRaw = detail(p, 'NETWORKS', 'NETWORK', 'CARRIERS');
   const title = detail(p, 'PLAN_TITLE', 'TITLE', 'PLAN_FAMILY_NAME');
+  const unlimited = /unlimited|^ul$|\bUL_/i.test(detail(p, 'PLAN_DATA_LIMIT', 'DATA', 'PLAN_DATA_QUOTA', 'PLAN_DATA', 'DATA_LIMIT'));
+  // A title that opens with the raw size ("1000 MB · 7 days", "1.95 GB · 15 days")
+  // is restated with the normalized size, so notes and data_gb agree.
+  const noteTitle = dataGb != null ? title.replace(/^\d+(?:\.\d+)?\s*(?:GB|MBs?)\b/i, `${dataGb} GB`) : title;
 
   return {
     plan_id: p.productId,
@@ -106,6 +161,6 @@ export function normalizePlan(p: RetailProduct): NormalizedPlan | null {
     currency: 'USD',
     network_carriers: carriersRaw ? carriersRaw.split(/[,/]/).map((s) => s.trim()).filter(Boolean) : [],
     unlimited_voice: /unlimited/i.test(voiceRaw),
-    notes: [dataGb === null ? 'Unlimited data' : null, title || null].filter(Boolean).join(' · ') || undefined,
+    notes: [unlimited ? 'Unlimited data' : null, noteTitle || null].filter(Boolean).join(' · ') || undefined,
   };
 }

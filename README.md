@@ -94,6 +94,8 @@ The customer pays their own card on Stripe's hosted page; the server never sees 
 | `search_plans` | Travel eSIM plans for a country, each with a `buy_url` | `GET /mm/products?country=` |
 | `get_quote` | Price breakdown for one plan plus its `buy_url` | `GET /mm/products/:id` |
 
+How it works, example prompts, limits, troubleshooting and what is logged: [meisimusa.com/claude-connector.html](https://www.meisimusa.com/claude-connector.html). `search_plans` and `search_us_numbers` take `limit` (default 10, max 50) and return `currency` once at the top level; `get_quote` takes an optional `country_code` to label a regional plan. The server also answers `/` (a one-page front door), `/favicon.ico` and `/apple-touch-icon.png` (the connector icon).
+
 Nothing on that path opens an account, buys, tops up, texts, or reads an account, and any key sent with the request is ignored. Someone who wants a line goes to `apply_url`; someone who wants a plan opens its `buy_url`, which shows that exact plan on meisimusa.com (`plans.html?buy=<plan_id>`), where they pay by card. `/mcp` (full) and `/mcp-info` (ChatGPT) are unchanged. Locally: `--directory` / `MEISIMUSA_DIRECTORY=1`.
 
 ## Configure

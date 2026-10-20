@@ -18,11 +18,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Config } from './config.js';
 import { ToolError } from './errors.js';
 import { log } from './logger.js';
-import { SEARCH_PLANS_NAME, searchPlansDescription, searchPlansDirectoryDescription, searchPlansInput, makeSearchPlansHandler } from './tools/search_plans.js';
-import { GET_QUOTE_NAME, getQuoteDescription, getQuoteDirectoryDescription, getQuoteInput, makeGetQuoteHandler } from './tools/get_quote.js';
+import { SEARCH_PLANS_NAME, searchPlansDescription, searchPlansDirectoryDescription, searchPlansInput, searchPlansDirectoryInput, makeSearchPlansHandler } from './tools/search_plans.js';
+import { GET_QUOTE_NAME, getQuoteDescription, getQuoteDirectoryDescription, getQuoteInput, getQuoteDirectoryInput, makeGetQuoteHandler } from './tools/get_quote.js';
 import { PURCHASE_NAME, purchaseDescription, purchaseInput, makePurchaseHandler } from './tools/purchase.js';
 import { GET_ACTIVATION_NAME, getActivationDescription, getActivationInput, makeGetActivationHandler } from './tools/get_activation.js';
-import { SEARCH_US_NUMBERS_NAME, searchUsNumbersDescription, searchUsNumbersDirectoryDescription, searchUsNumbersInput, makeSearchUsNumbersHandler } from './tools/search_us_numbers.js';
+import { SEARCH_US_NUMBERS_NAME, searchUsNumbersDescription, searchUsNumbersDirectoryDescription, searchUsNumbersInput, searchUsNumbersDirectoryInput, makeSearchUsNumbersHandler } from './tools/search_us_numbers.js';
 import { TOPUP_LOOKUP_NAME, topupLookupDescription, topupLookupInput, makeTopupLookupHandler } from './tools/topup_lookup.js';
 import { TOPUP_START_NAME, topupStartDescription, topupStartInput, makeTopupStartHandler } from './tools/topup_start.js';
 import { GET_ACCOUNT_NAME, getAccountDescription, getAccountInput, makeGetAccountHandler } from './tools/get_account.js';
@@ -40,12 +40,12 @@ import { GET_AI_LINE_OFFER_NAME, getAiLineOfferDescription, getAiLineOfferInput,
 export const DIRECTORY_INSTRUCTIONS =
   'MeiSIM USA rents real US phone lines for AI agents: a real US mobile number on a national carrier, with inbound texts ' +
   'delivered to a webhook or read over the API, and voice over SIP with the number as caller ID. Built for voice agents, ' +
-  'phone assistants, companion apps and SMS customer service. Start with get_ai_line_offer for the live monthly prices, ' +
-  'the first-term minimum, what a line includes, delivery time and how many numbers are ready now; send people who want ' +
-  'a line to its apply_url. Second, travel eSIM data plans for about 200 countries (search_plans) and retail US ' +
-  'phone plans for a handset (search_us_numbers), with get_quote for one plan\'s price. Every plan carries a buy_url that ' +
-  'opens that exact plan on meisimusa.com. This connector only reads the public catalog: it cannot open an account, ' +
-  'buy, top up, send or read messages, and it holds no customer data.';
+  'phone assistants, companion apps and SMS customer service. get_ai_line_offer returns the live monthly prices, the ' +
+  'first-term minimum, what a line includes, delivery time, how many numbers are ready now and the link to apply. ' +
+  'MeiSIM also sells travel eSIM data plans for about 200 countries (search_plans) and retail US phone plans for a ' +
+  'handset (search_us_numbers); get_quote prices one plan. Every plan carries a buy_url that opens that exact plan on ' +
+  'meisimusa.com. This connector only reads the public catalog: it cannot open an account, buy, top up, send or read ' +
+  'messages, and it holds no customer data.';
 
 type ContentBlock = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string };
 type ToolResult = { content: ContentBlock[]; structuredContent?: Record<string, unknown>; isError?: boolean; };
@@ -80,11 +80,36 @@ const getQuoteOutput = {
 const usNumbersOutput = {
   plans: z.array(z.object({
     plan_id: z.string(), carrier: z.string(), title: z.string(), data_gb: z.number().nullable(),
-    duration_days: z.number(), price: z.number(), currency: z.string(), voice: z.string(), sms: z.string(),
+    duration_days: z.number(), price: z.number(), currency: z.string(), voice: z.string().nullable(), sms: z.string().nullable(),
     includes_us_number: z.boolean(), buy_url: z.string().optional(),
   })),
   meta: metaShape,
   how_to_buy: z.string().optional(),
+};
+// ── Directory build shapes: currency once at the top level, no field that
+// repeats the request or is empty, country fields only when they hold a country.
+const directoryPlanShape = {
+  plan_id: z.string(), data_gb: z.number().nullable(), duration_days: z.number(), price: z.number(),
+  network_carriers: z.array(z.string()).optional(), unlimited_voice: z.boolean().optional(), notes: z.string().optional(),
+  country: z.string().optional(), country_name: z.string().optional(),
+  coverage: z.enum(['country', 'regional']), coverage_countries: z.number().int(), buy_url: z.string(),
+};
+const directorySearchPlansOutput = { currency: z.string(), plans: z.array(z.object(directoryPlanShape)), meta: metaShape, how_to_buy: z.string() };
+const directoryGetQuoteOutput = {
+  plan: z.object(directoryPlanShape),
+  total: z.object({ subtotal: z.number(), taxes: z.number(), fees: z.number(), final: z.number(), currency: z.string() }),
+  quote_expires_at: z.string(),
+  buy_url: z.string(),
+  how_to_buy: z.string(),
+};
+const directoryUsNumbersOutput = {
+  currency: z.string(),
+  plans: z.array(z.object({
+    plan_id: z.string(), carrier: z.string(), title: z.string(), data_gb: z.number().nullable(), duration_days: z.number(),
+    price: z.number(), voice: z.string().nullable(), sms: z.string().nullable(), includes_us_number: z.boolean(), buy_url: z.string(),
+  })),
+  meta: metaShape,
+  how_to_buy: z.string(),
 };
 const purchaseOutput = {
   order_id: z.string(), status: z.string(), payment_url: z.string().nullable().optional(),
@@ -146,12 +171,19 @@ const readMessagesOutput = { messages: z.array(messageShape), count: z.number(),
 const waitOutput = { received: z.boolean(), messages: z.array(messageShape), waited_seconds: z.number(), since: z.string(), note: z.string().optional() };
 const sendOutput = { sent: z.boolean(), from: z.string(), to: z.string(), note: z.string().nullable() };
 
-function guard<A>(fn: (args: A) => Promise<ToolResult>) {
+// The directory build logs one line per call: time, tool, arguments, ok or the
+// error code, duration. Nothing else about the caller (no address, no headers,
+// no session) reaches the log; /mcp and /mcp-info log failures only, as before.
+function guard<A>(fn: (args: A) => Promise<ToolResult>, logAs?: string) {
   return async (args: A): Promise<ToolResult> => {
+    const t0 = Date.now();
     try {
-      return await fn(args);
+      const out = await fn(args);
+      if (logAs) log.info('tool call', { tool: logAs, args, ok: true, ms: Date.now() - t0 });
+      return out;
     } catch (e) {
       const shape = e instanceof ToolError ? e.toShape() : { error: 'backend_error' as const, message: (e as Error)?.message || String(e) };
+      if (logAs) log.info('tool call', { tool: logAs, args, ok: false, error: shape.error, ms: Date.now() - t0 });
       log.error('tool failed', shape);
       return { content: [{ type: 'text', text: JSON.stringify(shape, null, 2) }], isError: true };
     }
@@ -171,16 +203,16 @@ export function buildServer(cfg: Config): McpServer {
     const dir = (title: string) => ({ title, annotations: { ...RO, title } });
     server.registerTool(GET_AI_LINE_OFFER_NAME,
       { ...dir('Get the AI phone-line offer'), description: getAiLineOfferDescription, inputSchema: getAiLineOfferInput, outputSchema: aiLineOfferOutput },
-      guard(makeGetAiLineOfferHandler(dcfg)));
+      guard(makeGetAiLineOfferHandler(dcfg), GET_AI_LINE_OFFER_NAME));
     server.registerTool(SEARCH_US_NUMBERS_NAME,
-      { ...dir('Search US phone-number plans'), description: searchUsNumbersDirectoryDescription, inputSchema: searchUsNumbersInput, outputSchema: usNumbersOutput },
-      guard(makeSearchUsNumbersHandler(dcfg)));
+      { ...dir('Search US phone-number plans'), description: searchUsNumbersDirectoryDescription, inputSchema: searchUsNumbersDirectoryInput, outputSchema: directoryUsNumbersOutput },
+      guard(makeSearchUsNumbersHandler(dcfg), SEARCH_US_NUMBERS_NAME));
     server.registerTool(SEARCH_PLANS_NAME,
-      { ...dir('Search travel eSIM plans'), description: searchPlansDirectoryDescription, inputSchema: searchPlansInput, outputSchema: searchPlansOutput },
-      guard(makeSearchPlansHandler(dcfg)));
+      { ...dir('Search travel eSIM plans'), description: searchPlansDirectoryDescription, inputSchema: searchPlansDirectoryInput, outputSchema: directorySearchPlansOutput },
+      guard(makeSearchPlansHandler(dcfg), SEARCH_PLANS_NAME));
     server.registerTool(GET_QUOTE_NAME,
-      { ...dir('Get a price quote and buy link'), description: getQuoteDirectoryDescription, inputSchema: getQuoteInput, outputSchema: getQuoteOutput },
-      guard(makeGetQuoteHandler(dcfg)));
+      { ...dir('Get a price quote and buy link'), description: getQuoteDirectoryDescription, inputSchema: getQuoteDirectoryInput, outputSchema: directoryGetQuoteOutput },
+      guard(makeGetQuoteHandler(dcfg), GET_QUOTE_NAME));
     return server;
   }
 
