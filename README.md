@@ -85,15 +85,16 @@ The customer pays their own card on Stripe's hosted page; the server never sees 
 
 ### Claude Connectors Directory build (`/mcp-directory`)
 
-`https://mcp.meisimusa.com/mcp-directory` is the listing in the Claude Connectors Directory. It needs no login and exposes only the public catalog, read-only:
+`https://mcp.meisimusa.com/mcp-directory` is the listing in the Claude Connectors Directory. It needs no login and exposes only public, read-only data, AI phone lines first:
 
-| Tool | What it does |
-|---|---|
-| `search_plans` | Travel eSIM plans for a country, each with a `buy_url` |
-| `search_us_numbers` | Retail US phone-number plans, each with a `buy_url` |
-| `get_quote` | Price breakdown for one plan plus its `buy_url` |
+| Tool | What it does | Wraps |
+|---|---|---|
+| `get_ai_line_offer` | The live offer for US phone lines for AI agents: monthly prices (texts, and with voice over SIP), first-term minimum, what a line includes, delivery, payment methods, numbers ready now, apply + docs links | `GET /web/ai-lines/offer` (public; reads the backend's own settings, so no copy of a price lives in this server) |
+| `search_us_numbers` | Retail US phone plans for a handset, each with a `buy_url` | `GET /mm/products?country=US` |
+| `search_plans` | Travel eSIM plans for a country, each with a `buy_url` | `GET /mm/products?country=` |
+| `get_quote` | Price breakdown for one plan plus its `buy_url` | `GET /mm/products/:id` |
 
-Nothing on that path buys, tops up, texts, or reads an account, and any key sent with the request is ignored. When someone wants to buy, the `buy_url` opens that exact plan on meisimusa.com (`plans.html?buy=<plan_id>`), where they pay by card. `/mcp` (full) and `/mcp-info` (ChatGPT) are unchanged. Locally: `--directory` / `MEISIMUSA_DIRECTORY=1`.
+Nothing on that path opens an account, buys, tops up, texts, or reads an account, and any key sent with the request is ignored. Someone who wants a line goes to `apply_url`; someone who wants a plan opens its `buy_url`, which shows that exact plan on meisimusa.com (`plans.html?buy=<plan_id>`), where they pay by card. `/mcp` (full) and `/mcp-info` (ChatGPT) are unchanged. Locally: `--directory` / `MEISIMUSA_DIRECTORY=1`.
 
 ## Configure
 
@@ -104,7 +105,7 @@ Nothing on that path buys, tops up, texts, or reads an account, and any key sent
 | `MEISIMUSA_TIMEOUT_MS` | `20000` | Per-request timeout. |
 | `--mock` / `MEISIMUSA_MOCK=1` | off | Deterministic in-memory data, no network. |
 | `--info-only` / `MEISIMUSA_INFO_ONLY=1` | off | Only the retail discovery tools (the ChatGPT directory build). Remote: `/mcp-info`. |
-| `--directory` / `MEISIMUSA_DIRECTORY=1` | off | The Claude Connectors Directory build: the same three tools with a `buy_url` per plan. Remote: `/mcp-directory` (`MCP_DIRECTORY_PATH`). |
+| `--directory` / `MEISIMUSA_DIRECTORY=1` | off | The Claude Connectors Directory build: get_ai_line_offer plus the three catalog tools with a `buy_url` per plan. Remote: `/mcp-directory` (`MCP_DIRECTORY_PATH`). |
 | `MEISIMUSA_SITE_URL` | `https://www.meisimusa.com` | Website used for `buy_url`. |
 | `PORT` / `MCP_PATH` | `8787` / `/mcp` | Remote HTTP server only. |
 

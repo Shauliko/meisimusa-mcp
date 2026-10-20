@@ -14,9 +14,11 @@ export const searchUsNumbersDescription =
   'Use this when the user wants an actual US number, not just travel data. Returns a plan_id for purchase.';
 
 export const searchUsNumbersDirectoryDescription =
-  'Find real US phone-number plans (a genuine US carrier line with calls, texts, and data, no SSN or contract). ' +
-  'Use this when the user wants an actual US number, not just travel data. Each plan carries a buy_url that ' +
-  'opens it on meisimusa.com. This connector cannot buy anything: to purchase, the user opens the buy_url.';
+  'Retail US phone plans for a person\'s own handset: a US number with calls, texts and data on a US carrier, paid by ' +
+  'card, no SSN or contract. Use this when a person wants a US number on their phone. For a line an AI agent will ' +
+  'use over the API and SIP (voice agents, phone assistants, companion apps, SMS customer service), use ' +
+  'get_ai_line_offer instead. Each plan carries a buy_url that opens it on meisimusa.com. This connector cannot buy ' +
+  'anything: to purchase, the user opens the buy_url.';
 
 export const searchUsNumbersInput = {
   max_price_usd: z.number().positive().optional().describe('Optional max monthly price in USD.'),

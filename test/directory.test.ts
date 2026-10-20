@@ -9,6 +9,8 @@ import { buyUrl } from '../src/retail.js';
 import { makeSearchPlansHandler } from '../src/tools/search_plans.js';
 import { makeSearchUsNumbersHandler } from '../src/tools/search_us_numbers.js';
 import { makeGetQuoteHandler } from '../src/tools/get_quote.js';
+import { makeGetAiLineOfferHandler } from '../src/tools/get_ai_line_offer.js';
+import { DIRECTORY_INSTRUCTIONS } from '../src/server.js';
 
 const cfg: Config = {
   baseUrl: 'https://meisimusa-backend.vercel.app', apiKey: 'should-be-ignored', priceCurrency: 'USD', mock: true,
@@ -18,8 +20,21 @@ const sc = (r: { structuredContent?: unknown }) => r.structuredContent as any;
 const tools = (c: Config) => (buildServer(c) as any)._registeredTools as Record<string, any>;
 
 describe('directory tool set', () => {
-  it('registers exactly the three catalog tools', () => {
-    expect(Object.keys(tools(cfg)).sort()).toEqual(['get_quote', 'search_plans', 'search_us_numbers']);
+  it('registers the four public tools, the AI-line offer first', () => {
+    expect(Object.keys(tools(cfg))).toEqual(['get_ai_line_offer', 'search_us_numbers', 'search_plans', 'get_quote']);
+  });
+  it('server instructions lead with AI phone lines, then travel', () => {
+    expect(DIRECTORY_INSTRUCTIONS.indexOf('phone lines for AI agents')).toBeGreaterThanOrEqual(0);
+    expect(DIRECTORY_INSTRUCTIONS.indexOf('phone lines for AI agents')).toBeLessThan(DIRECTORY_INSTRUCTIONS.search(/travel eSIM/i));
+    expect(DIRECTORY_INSTRUCTIONS).toMatch(/voice agents, phone assistants, companion apps and SMS customer service/);
+    expect(DIRECTORY_INSTRUCTIONS).toMatch(/cannot open an account, buy/);
+  });
+  it('no verification-code or VoIP-check pitch anywhere on this path', () => {
+    const texts = [DIRECTORY_INSTRUCTIONS, ...Object.values(tools(cfg)).map((t: any) => String(t.description) + ' ' + String(t.title))];
+    for (const x of texts) {
+      expect(x).not.toMatch(/verification|OTP|2FA|VoIP (check|detection)|passes? .*checks/i);
+      expect(x).not.toMatch(/Teltik|Brite|PrepaidIQ|FORT|Altaworx/);
+    }
   });
   it('nothing that buys, tops up, messages or reads an account', () => {
     const names = Object.keys(tools(cfg));
@@ -37,14 +52,44 @@ describe('directory tool set', () => {
   });
   it('tool text sends buyers to the link, never to a purchase tool', () => {
     for (const [name, t] of Object.entries(tools(cfg))) {
-      expect(t.description, name).toMatch(/buy_url/);
-      expect(t.description, name).toMatch(/cannot buy/);
+      expect(t.description, name).toMatch(/buy_url|apply_url/);
+      expect(t.description, name).toMatch(/cannot buy|cannot open an account/);
       // the full build's phrasing points at the purchase tool; the directory text must not
       expect(t.description, name).not.toMatch(/get_quote \/ purchase|for purchase|before purchase|purchase tool/i);
     }
   });
   it('directory wins over the full set even when a key is configured', () => {
-    expect(Object.keys(tools({ ...cfg, apiKey: 'k', infoOnly: false })).length).toBe(3);
+    expect(Object.keys(tools({ ...cfg, apiKey: 'k', infoOnly: false })).length).toBe(4);
+  });
+  it('get_ai_line_offer is absent from /mcp and /mcp-info', () => {
+    expect(Object.keys(tools({ ...cfg, directory: false, apiKey: undefined }))).not.toContain('get_ai_line_offer');
+    expect(Object.keys(tools({ ...cfg, directory: false, infoOnly: true, apiKey: undefined }))).not.toContain('get_ai_line_offer');
+  });
+});
+
+describe('get_ai_line_offer', () => {
+  it('returns the offer read from the backend, every field declared in the schema', async () => {
+    const r = sc(await makeGetAiLineOfferHandler(cfg)({}));
+    expect(r.monthly.texts_usd).toBe(35);
+    expect(r.monthly.voice_usd).toBe(45);
+    expect(r.usage_billed_separately).toBe(true);
+    expect(r.min_months).toBe(2);
+    expect(r.includes.join(' ')).toMatch(/national carrier/);
+    expect(r.includes.join(' ')).toMatch(/webhook/);
+    expect(r.includes.join(' ')).toMatch(/SIP/);
+    expect(r.includes.join(' ')).toMatch(/One call at a time/);
+    expect(r.includes.join(' ')).toMatch(/Outbound calls to US numbers only/);
+    expect(r.delivery.from_stock).toBe('seconds');
+    expect(r.payment_methods.length).toBeGreaterThan(0);
+    expect(r.ready_now).toEqual({ texts: 12, voice: 3 });
+    expect(r.apply_url).toBe('https://www.meisimusa.com/api-for-ai-agents.html');
+    expect(r.docs_url).toBe('https://www.meisimusa.com/api-docs.html');
+    const strict = (tools(cfg)['get_ai_line_offer'].outputSchema as any).strict();
+    expect(strict.safeParse(r).success, JSON.stringify(strict.safeParse(r))).toBe(true);
+  });
+  it('carries no key and no customer data', async () => {
+    const r = sc(await makeGetAiLineOfferHandler(cfg)({}));
+    expect(JSON.stringify(r)).not.toMatch(/balance_usd|wallet|@|api_key|should-be-ignored/i);
   });
 });
 

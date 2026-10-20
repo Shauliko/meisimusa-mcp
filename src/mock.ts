@@ -153,6 +153,21 @@ export function mockBackend(req: BackendRequest): unknown {
     return { ok: true, order };
   }
 
+  // ── Public AI-line offer (directory build) ──
+  if (req.method === 'GET' && pathOnly === '/web/ai-lines/offer') {
+    return {
+      ok: true, product: 'Real US phone lines for AI agents', currency: 'USD',
+      monthly: { texts_usd: 35, voice_usd: 45, note: 'Per number, per month. The line with voice also receives texts. Usage is billed separately.' },
+      usage_billed_separately: true, min_months: 2,
+      term_note: 'The first term is 2 months, paid up front; after that the line renews monthly from the account balance.',
+      includes: ['A real US mobile number on a national carrier, not a VoIP number', 'Inbound texts delivered to your webhook or read over the API',
+        'Voice over SIP, with the number as caller ID', 'One call at a time per line', 'Outbound calls to US numbers only'],
+      delivery: { from_stock: 'seconds', new_number: 'minutes', account: 'A person approves each account, usually the same day.' },
+      payment_methods: ['card', 'crypto (USDT)'], ready_now: { texts: 12, voice: 3 },
+      apply_url: 'https://www.meisimusa.com/api-for-ai-agents.html', docs_url: 'https://www.meisimusa.com/api-docs.html',
+    };
+  }
+
   // ── Top-up ──
   if (req.method === 'GET' && pathOnly === '/web/topup/carriers') {
     return { ok: true, carriers: [{ id: 1, name: 'AT&T' }, { id: 2, name: 'T-Mobile' }] };

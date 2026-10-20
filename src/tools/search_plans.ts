@@ -16,10 +16,11 @@ export const searchPlansDescription =
 
 // Directory build: same search, but the way to buy is the link, not a tool.
 export const searchPlansDirectoryDescription =
-  'Search travel eSIM data plans for a destination country. Returns plans with data allowance, ' +
-  'validity in days, USD price, and a buy_url that opens that exact plan on meisimusa.com. ' +
-  'Use this first when a user wants mobile data for a trip (e.g. "5GB in Italy for 10 days"). ' +
-  'This connector cannot buy anything: when the user wants to purchase, give them the buy_url.';
+  'Travel eSIM data plans for a destination country, MeiSIM\'s second product after US phone lines for AI agents. ' +
+  'Returns plans with data allowance, validity in days, USD price, and a buy_url that opens that exact plan on ' +
+  'meisimusa.com. Use it when a person wants mobile data for a trip (e.g. "5GB in Italy for 10 days"); for a phone ' +
+  'line for an AI agent use get_ai_line_offer instead. This connector cannot buy anything: when the user wants to ' +
+  'purchase, give them the buy_url.';
 
 export const searchPlansInput = {
   country_code: z

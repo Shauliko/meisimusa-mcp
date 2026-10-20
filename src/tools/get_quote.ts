@@ -17,9 +17,9 @@ export const getQuoteDescription =
   'plus a price breakdown and a short-lived quote. Call after search_plans, before purchase.';
 
 export const getQuoteDirectoryDescription =
-  'Confirm the current USD price for a specific plan (travel eSIM or US number) and get its buy_url. ' +
-  'Returns the full plan, a price breakdown and a short-lived quote. Call after search_plans or ' +
-  'search_us_numbers. This connector cannot buy anything: to purchase, the user opens the buy_url.';
+  'Confirm the current USD price for one travel eSIM or retail US phone plan and get its buy_url. Returns the full ' +
+  'plan, a price breakdown and a short-lived quote. Call after search_plans or search_us_numbers. AI phone lines ' +
+  'are priced by get_ai_line_offer, not here. This connector cannot buy anything: to purchase, the user opens the buy_url.';
 
 export const getQuoteInput = {
   plan_id: z.string().describe('The plan_id (productId) returned by search_plans.'),

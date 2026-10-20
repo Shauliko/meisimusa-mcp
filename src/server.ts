@@ -33,6 +33,19 @@ import { LIST_MY_NUMBERS_NAME, listMyNumbersDescription, listMyNumbersInput, mak
 import { READ_MESSAGES_NAME, readMessagesDescription, readMessagesInput, makeReadMessagesHandler } from './tools/read_messages.js';
 import { WAIT_FOR_MESSAGE_NAME, waitForMessageDescription, waitForMessageInput, makeWaitForMessageHandler } from './tools/wait_for_message.js';
 import { SEND_MESSAGE_NAME, sendMessageDescription, sendMessageInput, makeSendMessageHandler } from './tools/send_message.js';
+import { GET_AI_LINE_OFFER_NAME, getAiLineOfferDescription, getAiLineOfferInput, aiLineOfferOutput, makeGetAiLineOfferHandler } from './tools/get_ai_line_offer.js';
+
+// What a client reads about the directory build before it calls anything.
+// Lines first, travel second. Nothing here sells in-chat.
+export const DIRECTORY_INSTRUCTIONS =
+  'MeiSIM USA rents real US phone lines for AI agents: a real US mobile number on a national carrier, with inbound texts ' +
+  'delivered to a webhook or read over the API, and voice over SIP with the number as caller ID. Built for voice agents, ' +
+  'phone assistants, companion apps and SMS customer service. Start with get_ai_line_offer for the live monthly prices, ' +
+  'the first-term minimum, what a line includes, delivery time and how many numbers are ready now; send people who want ' +
+  'a line to its apply_url. Second, travel eSIM data plans for about 200 countries (search_plans) and retail US ' +
+  'phone plans for a handset (search_us_numbers), with get_quote for one plan\'s price. Every plan carries a buy_url that ' +
+  'opens that exact plan on meisimusa.com. This connector only reads the public catalog: it cannot open an account, ' +
+  'buy, top up, send or read messages, and it holds no customer data.';
 
 type ContentBlock = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string };
 type ToolResult = { content: ContentBlock[]; structuredContent?: Record<string, unknown>; isError?: boolean; };
@@ -146,18 +159,22 @@ function guard<A>(fn: (args: A) => Promise<ToolResult>) {
 }
 
 export function buildServer(cfg: Config): McpServer {
-  const server = new McpServer({ name: 'meisimusa-mcp', version: cfg.version });
+  const server = new McpServer({ name: 'meisimusa-mcp', version: cfg.version }, cfg.directory ? { instructions: DIRECTORY_INSTRUCTIONS } : undefined);
 
-  // ── Claude Connectors Directory build: three public read-only tools, every
-  // plan with a buy_url, nothing that moves money or touches an account. ──
+  // ── Claude Connectors Directory build: four public read-only tools, lines
+  // first, every plan with a buy_url, nothing that moves money or touches an
+  // account. ──
   if (cfg.directory) {
     const dcfg: Config = { ...cfg, apiKey: undefined, directory: true };
-    server.registerTool(SEARCH_PLANS_NAME,
-      { title: 'Search travel eSIM plans', description: searchPlansDirectoryDescription, inputSchema: searchPlansInput, outputSchema: searchPlansOutput, annotations: RO },
-      guard(makeSearchPlansHandler(dcfg)));
+    server.registerTool(GET_AI_LINE_OFFER_NAME,
+      { title: 'Get the AI phone-line offer', description: getAiLineOfferDescription, inputSchema: getAiLineOfferInput, outputSchema: aiLineOfferOutput, annotations: RO },
+      guard(makeGetAiLineOfferHandler(dcfg)));
     server.registerTool(SEARCH_US_NUMBERS_NAME,
       { title: 'Search US phone-number plans', description: searchUsNumbersDirectoryDescription, inputSchema: searchUsNumbersInput, outputSchema: usNumbersOutput, annotations: RO },
       guard(makeSearchUsNumbersHandler(dcfg)));
+    server.registerTool(SEARCH_PLANS_NAME,
+      { title: 'Search travel eSIM plans', description: searchPlansDirectoryDescription, inputSchema: searchPlansInput, outputSchema: searchPlansOutput, annotations: RO },
+      guard(makeSearchPlansHandler(dcfg)));
     server.registerTool(GET_QUOTE_NAME,
       { title: 'Get a price quote and buy link', description: getQuoteDirectoryDescription, inputSchema: getQuoteInput, outputSchema: getQuoteOutput, annotations: RO },
       guard(makeGetQuoteHandler(dcfg)));
