@@ -38,6 +38,11 @@ const MCP_PATH = process.env.MCP_PATH || '/mcp';
 // ChatGPT can't sell digital goods, so it connects to the info-only path
 // (search + quote, no purchase). Claude / Grok / direct users use /mcp.
 const INFO_PATH = process.env.MCP_INFO_PATH || '/mcp-info';
+// Claude Connectors Directory build: public catalog only, no login, every plan
+// with a buy_url on meisimusa.com. Nothing on this path reads a key or moves
+// money (the directory policy bars connectors that execute financial
+// transactions for the user). /mcp and /mcp-info are untouched.
+const DIRECTORY_PATH = process.env.MCP_DIRECTORY_PATH || '/mcp-directory';
 
 function readBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve) => {
@@ -73,7 +78,8 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
   }
   const isFull = url === MCP_PATH;
   const isInfo = url === INFO_PATH;
-  if (!isFull && !isInfo) {
+  const isDirectory = url === DIRECTORY_PATH;
+  if (!isFull && !isInfo && !isDirectory) {
     res.writeHead(404, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ error: 'not_found' }));
     return;
@@ -87,8 +93,9 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
 
   try {
     const body = await readBody(req);
-    const reqCfg = { ...cfg, apiKey: isInfo ? undefined : keyFrom(req) };
-    const mcp = buildServer(isInfo ? { ...reqCfg, infoOnly: true } : reqCfg);
+    // The directory and info paths never read a key: whatever header arrives is ignored.
+    const reqCfg = { ...cfg, apiKey: isInfo || isDirectory ? undefined : keyFrom(req) };
+    const mcp = buildServer(isDirectory ? { ...reqCfg, directory: true } : isInfo ? { ...reqCfg, infoOnly: true } : reqCfg);
     // enableJsonResponse: reply with plain application/json instead of an SSE
     // stream, which the OpenAI scanner (and simpler clients) parse reliably.
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
@@ -105,5 +112,5 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
 });
 
 httpServer.listen(PORT, () =>
-  log.info('streamable-http server listening', { port: PORT, path: MCP_PATH, mock: cfg.mock }),
+  log.info('streamable-http server listening', { port: PORT, path: MCP_PATH, info_path: INFO_PATH, directory_path: DIRECTORY_PATH, mock: cfg.mock }),
 );

@@ -3,6 +3,26 @@
 // everywhere. Retail prices are USD. Field names vary across providers
 // (Mobimatter / SIMply / etc.), so every read uses documented fallbacks.
 
+import type { Config } from './config.js';
+
+/**
+ * Where a person buys one exact plan on the website. plans.html opens the buy
+ * modal for `?buy=<productId>` once the catalog loads; `country=` preselects the
+ * search box for travel plans and `#us` opens the US-numbers tab. Used by the
+ * directory build, which never sells in-chat.
+ */
+export function buyUrl(cfg: Config, planId: string, opts: { country?: string; us?: boolean } = {}): string {
+  const site = (cfg.siteUrl || 'https://www.meisimusa.com').replace(/\/$/, '');
+  const q = new URLSearchParams();
+  if (opts.country && !opts.us) q.set('country', opts.country.toUpperCase());
+  q.set('buy', planId);
+  return `${site}/plans.html?${q.toString()}${opts.us ? '#us' : ''}`;
+}
+
+export const HOW_TO_BUY =
+  'This connector only reads the public catalog. To buy, open the buy_url of the plan you want: ' +
+  'it opens that exact plan on meisimusa.com, where you pay by card and the eSIM is emailed to you.';
+
 export interface RetailProduct {
   productId: string;
   providerName?: string;

@@ -3,7 +3,9 @@
 // structuredContent — both required by the ChatGPT app review.
 //
 // Tool set:
-//   Retail, no key (also exposed in info-only / ChatGPT directory):
+//   Retail, no key (also exposed in info-only / ChatGPT directory, and in the
+//   Claude Connectors Directory build at /mcp-directory, where every plan
+//   carries a buy_url instead of an in-chat purchase):
 //     search_plans, get_quote, search_us_numbers
 //   Retail, transactional (full server only, Claude / Grok / direct):
 //     purchase, get_activation, topup_lookup, topup_start
@@ -16,11 +18,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Config } from './config.js';
 import { ToolError } from './errors.js';
 import { log } from './logger.js';
-import { SEARCH_PLANS_NAME, searchPlansDescription, searchPlansInput, makeSearchPlansHandler } from './tools/search_plans.js';
-import { GET_QUOTE_NAME, getQuoteDescription, getQuoteInput, makeGetQuoteHandler } from './tools/get_quote.js';
+import { SEARCH_PLANS_NAME, searchPlansDescription, searchPlansDirectoryDescription, searchPlansInput, makeSearchPlansHandler } from './tools/search_plans.js';
+import { GET_QUOTE_NAME, getQuoteDescription, getQuoteDirectoryDescription, getQuoteInput, makeGetQuoteHandler } from './tools/get_quote.js';
 import { PURCHASE_NAME, purchaseDescription, purchaseInput, makePurchaseHandler } from './tools/purchase.js';
 import { GET_ACTIVATION_NAME, getActivationDescription, getActivationInput, makeGetActivationHandler } from './tools/get_activation.js';
-import { SEARCH_US_NUMBERS_NAME, searchUsNumbersDescription, searchUsNumbersInput, makeSearchUsNumbersHandler } from './tools/search_us_numbers.js';
+import { SEARCH_US_NUMBERS_NAME, searchUsNumbersDescription, searchUsNumbersDirectoryDescription, searchUsNumbersInput, makeSearchUsNumbersHandler } from './tools/search_us_numbers.js';
 import { TOPUP_LOOKUP_NAME, topupLookupDescription, topupLookupInput, makeTopupLookupHandler } from './tools/topup_lookup.js';
 import { TOPUP_START_NAME, topupStartDescription, topupStartInput, makeTopupStartHandler } from './tools/topup_start.js';
 import { GET_ACCOUNT_NAME, getAccountDescription, getAccountInput, makeGetAccountHandler } from './tools/get_account.js';
@@ -42,22 +44,27 @@ const planShape = {
   plan_id: z.string(), country: z.string(), country_name: z.string(), data_gb: z.number().nullable(),
   duration_days: z.number(), price: z.number(), currency: z.string(),
   network_carriers: z.array(z.string()), unlimited_voice: z.boolean().optional(), notes: z.string().optional(),
+  // Directory build only: where a person buys this exact plan on the website.
+  buy_url: z.string().optional(),
 };
 const metaShape = z.object({ total_results: z.number(), returned_at: z.string().optional(), source: z.string() });
 
-const searchPlansOutput = { plans: z.array(z.object(planShape)), meta: metaShape };
+const searchPlansOutput = { plans: z.array(z.object(planShape)), meta: metaShape, how_to_buy: z.string().optional() };
 const getQuoteOutput = {
   plan: z.object(planShape),
   total: z.object({ subtotal: z.number(), taxes: z.number(), fees: z.number(), final: z.number(), currency: z.string() }),
   quote_expires_at: z.string(),
+  buy_url: z.string().optional(),
+  how_to_buy: z.string().optional(),
 };
 const usNumbersOutput = {
   plans: z.array(z.object({
     plan_id: z.string(), carrier: z.string(), title: z.string(), data_gb: z.number().nullable(),
     duration_days: z.number(), price: z.number(), currency: z.string(), voice: z.string(), sms: z.string(),
-    includes_us_number: z.boolean(),
+    includes_us_number: z.boolean(), buy_url: z.string().optional(),
   })),
   meta: metaShape,
+  how_to_buy: z.string().optional(),
 };
 const purchaseOutput = {
   order_id: z.string(), status: z.string(), payment_url: z.string().nullable().optional(),
@@ -133,6 +140,22 @@ function guard<A>(fn: (args: A) => Promise<ToolResult>) {
 
 export function buildServer(cfg: Config): McpServer {
   const server = new McpServer({ name: 'meisimusa-mcp', version: cfg.version });
+
+  // ── Claude Connectors Directory build: three public read-only tools, every
+  // plan with a buy_url, nothing that moves money or touches an account. ──
+  if (cfg.directory) {
+    const dcfg: Config = { ...cfg, apiKey: undefined, directory: true };
+    server.registerTool(SEARCH_PLANS_NAME,
+      { title: 'Search travel eSIM plans', description: searchPlansDirectoryDescription, inputSchema: searchPlansInput, outputSchema: searchPlansOutput, annotations: RO },
+      guard(makeSearchPlansHandler(dcfg)));
+    server.registerTool(SEARCH_US_NUMBERS_NAME,
+      { title: 'Search US phone-number plans', description: searchUsNumbersDirectoryDescription, inputSchema: searchUsNumbersInput, outputSchema: usNumbersOutput, annotations: RO },
+      guard(makeSearchUsNumbersHandler(dcfg)));
+    server.registerTool(GET_QUOTE_NAME,
+      { title: 'Get a price quote and buy link', description: getQuoteDirectoryDescription, inputSchema: getQuoteInput, outputSchema: getQuoteOutput, annotations: RO },
+      guard(makeGetQuoteHandler(dcfg)));
+    return server;
+  }
 
   // ── Discovery (read-only; also in info-only / ChatGPT directory) ──
   server.registerTool(SEARCH_PLANS_NAME,

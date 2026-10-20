@@ -5,13 +5,18 @@
 import { z } from 'zod';
 import type { Config } from '../config.js';
 import { callBackend } from '../http.js';
-import { detail, parseDataGb, parseDurationDays, type RetailProduct } from '../retail.js';
+import { detail, parseDataGb, parseDurationDays, buyUrl, HOW_TO_BUY, type RetailProduct } from '../retail.js';
 
 export const SEARCH_US_NUMBERS_NAME = 'search_us_numbers';
 
 export const searchUsNumbersDescription =
   'Find real US phone-number plans (a genuine US carrier line with calls, texts, and data, no SSN or contract). ' +
   'Use this when the user wants an actual US number, not just travel data. Returns a plan_id for purchase.';
+
+export const searchUsNumbersDirectoryDescription =
+  'Find real US phone-number plans (a genuine US carrier line with calls, texts, and data, no SSN or contract). ' +
+  'Use this when the user wants an actual US number, not just travel data. Each plan carries a buy_url that ' +
+  'opens it on meisimusa.com. This connector cannot buy anything: to purchase, the user opens the buy_url.';
 
 export const searchUsNumbersInput = {
   max_price_usd: z.number().positive().optional().describe('Optional max monthly price in USD.'),
@@ -47,9 +52,14 @@ export function makeSearchUsNumbersHandler(cfg: Config) {
       }))
       .filter((p) => p.price >= 0.5)
       .filter((p) => args.max_price_usd == null || p.price <= args.max_price_usd)
-      .sort((a, b) => a.price - b.price);
+      .sort((a, b) => a.price - b.price)
+      .map((p) => (cfg.directory ? { ...p, buy_url: buyUrl(cfg, p.plan_id, { us: true }) } : p));
 
-    const result = { plans, meta: { total_results: plans.length, returned_at: new Date().toISOString(), source: 'meisimusa' as const } };
+    const result = {
+      plans,
+      meta: { total_results: plans.length, returned_at: new Date().toISOString(), source: 'meisimusa' as const },
+      ...(cfg.directory ? { how_to_buy: HOW_TO_BUY } : {}),
+    };
     return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], structuredContent: result };
   };
 }

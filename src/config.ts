@@ -19,9 +19,18 @@ export interface Config {
   // only — an eSIM is a digital good, so the in-chat purchase flow can't ship
   // there. Claude / Grok / direct users get the full server.
   infoOnly: boolean;
+  // Directory mode (the Claude Connectors Directory build, remote path
+  // /mcp-directory): the same three public, read-only catalog tools as
+  // info-only, but every plan carries a buy_url on meisimusa.com and the tool
+  // text sends the user there to pay. No purchase, top-up, messaging or
+  // account tool is registered, and no key is read: the directory policy bars
+  // connectors that execute financial transactions for the user.
+  directory?: boolean;
+  // Public website, for the buy links. Never the API host.
+  siteUrl: string;
 }
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.3.0';
 
 export function loadConfig(argv: string[] = process.argv.slice(2)): Config {
   const mock =
@@ -37,5 +46,7 @@ export function loadConfig(argv: string[] = process.argv.slice(2)): Config {
     timeoutMs: Number(process.env.MEISIMUSA_TIMEOUT_MS || 20000),
     version: VERSION,
     infoOnly: argv.includes('--info-only') || process.env.MEISIMUSA_INFO_ONLY === '1',
+    directory: argv.includes('--directory') || process.env.MEISIMUSA_DIRECTORY === '1',
+    siteUrl: (process.env.MEISIMUSA_SITE_URL || 'https://www.meisimusa.com').replace(/\/$/, ''),
   };
 }

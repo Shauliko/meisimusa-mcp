@@ -8,13 +8,18 @@ import { z } from 'zod';
 import type { Config } from '../config.js';
 import { callBackend } from '../http.js';
 import { ToolError } from '../errors.js';
-import { normalizePlan, type RetailProduct } from '../retail.js';
+import { normalizePlan, buyUrl, HOW_TO_BUY, type RetailProduct } from '../retail.js';
 
 export const GET_QUOTE_NAME = 'get_quote';
 
 export const getQuoteDescription =
   'Confirm the current USD price for a specific eSIM plan before purchasing. Returns the full plan ' +
   'plus a price breakdown and a short-lived quote. Call after search_plans, before purchase.';
+
+export const getQuoteDirectoryDescription =
+  'Confirm the current USD price for a specific plan (travel eSIM or US number) and get its buy_url. ' +
+  'Returns the full plan, a price breakdown and a short-lived quote. Call after search_plans or ' +
+  'search_us_numbers. This connector cannot buy anything: to purchase, the user opens the buy_url.';
 
 export const getQuoteInput = {
   plan_id: z.string().describe('The plan_id (productId) returned by search_plans.'),
@@ -35,10 +40,12 @@ export function makeGetQuoteHandler(cfg: Config) {
     }
 
     const price = plan.price;
+    const us = String(plan.plan_id).startsWith('p3:');
     const result = {
-      plan,
+      plan: cfg.directory ? { ...plan, buy_url: buyUrl(cfg, plan.plan_id, { country: plan.country, us }) } : plan,
       total: { subtotal: price, taxes: 0, fees: 0, final: price, currency: plan.currency },
       quote_expires_at: new Date(Date.now() + QUOTE_TTL_MINUTES * 60 * 1000).toISOString(),
+      ...(cfg.directory ? { buy_url: buyUrl(cfg, plan.plan_id, { country: plan.country, us }), how_to_buy: HOW_TO_BUY } : {}),
     };
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],

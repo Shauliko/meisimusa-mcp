@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import type { Config } from '../config.js';
 import { callBackend } from '../http.js';
-import { normalizePlan, type NormalizedPlan, type RetailProduct } from '../retail.js';
+import { normalizePlan, buyUrl, HOW_TO_BUY, type NormalizedPlan, type RetailProduct } from '../retail.js';
 
 export const SEARCH_PLANS_NAME = 'search_plans';
 
@@ -13,6 +13,13 @@ export const searchPlansDescription =
   'Search travel eSIM data plans for a destination country. Returns plans with data allowance, ' +
   'validity in days, and USD price. Use this first when a user wants mobile data for a trip ' +
   '(e.g. "5GB in Italy for 10 days"). Returns a plan_id to pass to get_quote / purchase.';
+
+// Directory build: same search, but the way to buy is the link, not a tool.
+export const searchPlansDirectoryDescription =
+  'Search travel eSIM data plans for a destination country. Returns plans with data allowance, ' +
+  'validity in days, USD price, and a buy_url that opens that exact plan on meisimusa.com. ' +
+  'Use this first when a user wants mobile data for a trip (e.g. "5GB in Italy for 10 days"). ' +
+  'This connector cannot buy anything: when the user wants to purchase, give them the buy_url.';
 
 export const searchPlansInput = {
   country_code: z
@@ -46,6 +53,7 @@ type SearchPlan = NormalizedPlan & {
   vendor: string;
   coverage: 'country' | 'regional';
   coverage_countries: number;
+  buy_url?: string;
 };
 
 function sortPlans<T extends NormalizedPlan>(plans: T[], by: SearchPlansArgs['sort_by']): T[] {
@@ -118,10 +126,12 @@ export function makeSearchPlansHandler(cfg: Config) {
     });
 
     plans = sortPlans(plans, args.sort_by);
+    if (cfg.directory) plans = plans.map((p) => ({ ...p, buy_url: buyUrl(cfg, p.plan_id, { country: iso }) }));
 
     const result = {
       plans,
       meta: { total_results: plans.length, returned_at: new Date().toISOString(), source: 'meisimusa' as const },
+      ...(cfg.directory ? { how_to_buy: HOW_TO_BUY } : {}),
     };
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
