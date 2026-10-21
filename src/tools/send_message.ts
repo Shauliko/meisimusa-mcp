@@ -12,7 +12,7 @@ export const SEND_MESSAGE_NAME = 'send_message';
 export const sendMessageDescription =
   'Send a text message from one of your MeiSIM numbers to a US number. Sending must be enabled on your ' +
   'account and each number has a monthly allowance; a refusal tells you which. The answer means accepted by the carrier: ' +
-  'a mobile line has no delivery receipt. The same text to more than three numbers from one line inside a minute is refused ' +
+  'a mobile line has no delivery receipt. The same text to more than three numbers from one line inside an hour is refused ' +
   '(carriers drop that as a broadcast); write to each person in their own words. Not for emergency services. Needs your API key.';
 
 export const sendMessageInput = {
