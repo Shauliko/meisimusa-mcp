@@ -141,7 +141,7 @@ export function mockBackend(req: BackendRequest): unknown {
     const line = MY_LINES.find((l) => l.number === sendM[1]);
     if (!line) throw new ToolError('not_found', 'That number is not one of yours.', { status: 404 });
     if (!String(body.message || '').trim()) throw new ToolError('invalid_input', 'The message is empty.', { status: 400 });
-    return { ok: true, from: line.number, to: String(body.to || '').replace(/\D/g, ''), to_kind: 'us', note: 'Sent. Each number has its own monthly sending allowance.' };
+    return { ok: true, from: line.number, to: String(body.to || '').replace(/\D/g, ''), to_kind: 'us', note: 'Accepted by the carrier. There is no delivery receipt on these lines: accepted means the carrier took the text, not that the handset has it. Each number has its own monthly sending allowance.' };
   }
   if (req.method === 'POST' && pathOnly === '/api/v1/sms/order') {
     const ref = String(body.customer_reference || '');
