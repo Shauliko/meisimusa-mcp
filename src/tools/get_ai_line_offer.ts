@@ -51,9 +51,9 @@ export function makeGetAiLineOfferHandler(cfg: Config) {
       monthly: {
         texts_usd: num(d?.monthly?.texts_usd),
         voice_usd: num(d?.monthly?.voice_usd),
-        note: String(d?.monthly?.note || 'Per number, per month. Usage is billed separately.'),
+        note: String(d?.monthly?.note || 'Per number, per month, all inclusive: no per-message or per-minute charges.'),
       },
-      usage_billed_separately: d?.usage_billed_separately !== false,
+      usage_billed_separately: d?.usage_billed_separately === true,
       min_months: Math.max(1, Math.trunc(num(d?.min_months)) || 1),
       term_note: String(d?.term_note || ''),
       includes: Array.isArray(d?.includes) ? d.includes.map((x: unknown) => String(x)) : [],

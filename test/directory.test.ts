@@ -76,7 +76,8 @@ describe('get_ai_line_offer', () => {
     const r = sc(await makeGetAiLineOfferHandler(cfg)({}));
     expect(r.monthly.texts_usd).toBe(35);
     expect(r.monthly.voice_usd).toBe(45);
-    expect(r.usage_billed_separately).toBe(true);
+    expect(r.usage_billed_separately).toBe(false);
+    expect(r.monthly.note).toMatch(/all inclusive/);
     expect(r.min_months).toBe(2);
     expect(r.includes.join(' ')).toMatch(/national carrier/);
     expect(r.includes.join(' ')).toMatch(/webhook/);

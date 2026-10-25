@@ -175,8 +175,8 @@ export function mockBackend(req: BackendRequest): unknown {
   if (req.method === 'GET' && pathOnly === '/web/ai-lines/offer') {
     return {
       ok: true, product: 'Real US phone lines for AI agents', currency: 'USD',
-      monthly: { texts_usd: 35, voice_usd: 45, note: 'Per number, per month. The line with voice also receives texts. Usage is billed separately.' },
-      usage_billed_separately: true, min_months: 2,
+      monthly: { texts_usd: 35, voice_usd: 45, note: 'Per number, per month, all inclusive: no per-message or per-minute charges. The line with voice also receives texts. Lower prices for volume.' },
+      usage_billed_separately: false, min_months: 2,
       term_note: 'The first term is 2 months, paid up front; after that the line renews monthly from the account balance.',
       includes: ['A real US mobile number on a national carrier, not a VoIP number', 'Inbound texts delivered to your webhook or read over the API',
         'Voice over SIP, with the number as caller ID', 'One call at a time per line', 'Outbound calls to US numbers only'],
