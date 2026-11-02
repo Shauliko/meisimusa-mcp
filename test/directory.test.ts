@@ -33,7 +33,11 @@ describe('directory tool set', () => {
     const texts = [DIRECTORY_INSTRUCTIONS, ...Object.values(tools(cfg)).map((t: any) => String(t.description) + ' ' + String(t.title))];
     for (const x of texts) {
       expect(x).not.toMatch(/verification|OTP|2FA|VoIP (check|detection)|passes? .*checks/i);
-      expect(x).not.toMatch(/Teltik|Brite|PrepaidIQ|FORT|Altaworx/);
+      // Supplier names are a secret, so this public repo cannot spell them.
+      // The list lives on the server (MCP_SECRET_WORDS, comma-separated).
+      for (const w of String(process.env.MCP_SECRET_WORDS || '').split(',').map(s => s.trim()).filter(Boolean)) {
+        expect(x.toLowerCase()).not.toContain(w.toLowerCase());
+      }
     }
   });
   it('nothing that buys, tops up, messages or reads an account', () => {
@@ -234,10 +238,10 @@ describe('directory: numbers that match reality', () => {
   it('p2 plans: 10,000 MB is 10 GB and "1.95 GB" on a 2GB plan is 2 GB, in data_gb and in notes', async () => {
     const r = sc(await makeSearchPlansHandler(cfg)({ ...IT, limit: 50 }));
     const by = (id: string) => r.plans.find((p: any) => p.plan_id === id);
-    expect(by('p2:SIMplyg_10GB_30D_IT_V2').data_gb).toBe(10);
-    expect(by('p2:SIMplyg_10GB_30D_IT_V2').notes).toBe('10 GB · 30 days · Italy');
-    expect(by('p2:SIMplyg_2GB_15D_IT_V2').data_gb).toBe(2);
-    expect(by('p2:SIMplyg_2GB_15D_IT_V2').notes).toBe('2 GB · 15 days · Italy');
+    expect(by('p2:G_10GB_30D_IT_V2').data_gb).toBe(10);
+    expect(by('p2:G_10GB_30D_IT_V2').notes).toBe('10 GB · 30 days · Italy');
+    expect(by('p2:G_2GB_15D_IT_V2').data_gb).toBe(2);
+    expect(by('p2:G_2GB_15D_IT_V2').notes).toBe('2 GB · 15 days · Italy');
     for (const p of r.plans) expect(p.data_gb).not.toBe(0);
   });
 });

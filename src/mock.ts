@@ -18,25 +18,25 @@ const det = (title: string, dataGb: string, days: string, nets: string) => [
 
 const CATALOG: Record<string, RetailProduct[]> = {
   IT: [
-    { productId: 'mm_IT_1gb_7d',  providerName: 'Mobimatter', retailPrice: 4.5,  productCategory: 'esim_realtime', countries: ['IT', 'Italy'], regions: ['Europe'], productDetails: det('Italy 1GB 7 days', '1 GB', '7', 'TIM, Vodafone') },
-    { productId: 'mm_IT_5gb_30d', providerName: 'Mobimatter', retailPrice: 9.5,  productCategory: 'esim_realtime', countries: ['IT', 'Italy'], regions: ['Europe'], productDetails: det('Italy 5GB 30 days', '5 GB', '30', 'TIM, Vodafone') },
-    { productId: 'mm_IT_10gb_30d',providerName: 'Mobimatter', retailPrice: 14.0, productCategory: 'esim_realtime', countries: ['IT', 'Italy'], regions: ['Europe'], productDetails: det('Italy 10GB 30 days', '10 GB', '30', 'TIM, Vodafone') },
+    { productId: 'mm_IT_1gb_7d',  providerName: 'MeiSIM', retailPrice: 4.5,  productCategory: 'esim_realtime', countries: ['IT', 'Italy'], regions: ['Europe'], productDetails: det('Italy 1GB 7 days', '1 GB', '7', 'TIM, Vodafone') },
+    { productId: 'mm_IT_5gb_30d', providerName: 'MeiSIM', retailPrice: 9.5,  productCategory: 'esim_realtime', countries: ['IT', 'Italy'], regions: ['Europe'], productDetails: det('Italy 5GB 30 days', '5 GB', '30', 'TIM, Vodafone') },
+    { productId: 'mm_IT_10gb_30d',providerName: 'MeiSIM', retailPrice: 14.0, productCategory: 'esim_realtime', countries: ['IT', 'Italy'], regions: ['Europe'], productDetails: det('Italy 10GB 30 days', '10 GB', '30', 'TIM, Vodafone') },
     // A regional plan as the live catalog returns it: 36 ISO codes, a network as providerName, bare GB in the detail.
     { productId: 'c7105b7e-6519-4e4e-b5da-141f2e5e5e30', providerName: 'Sparks', retailPrice: 11.0, productCategory: 'esim_realtime',
       countries: ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IS', 'IE', 'IT', 'LV', 'LI', 'LT', 'LU', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'CH', 'GB', 'UA', 'TR', 'RS', 'ME'],
       regions: ['Europe'], productDetails: [{ name: 'PLAN_TITLE', value: 'Europe Special 5 GB' }, { name: 'PLAN_DATA_LIMIT', value: '5' }, { name: 'PLAN_DATA_UNIT', value: 'GB' }, { name: 'VALIDITY_IN_DAYS', value: '30' }] },
     // p2 plans as the live catalog returns them: sizes in MB, or GB already divided by 1024.
-    { productId: 'p2:SIMplyg_10GB_30D_IT_V2', providerName: 'SIMply', retailPrice: 20.0, productCategory: 'esim_realtime', countries: ['Italy'], regions: ['Europe'],
+    { productId: 'p2:G_10GB_30D_IT_V2', providerName: 'MeiSIM', retailPrice: 20.0, productCategory: 'esim_realtime', countries: ['Italy'], regions: ['Europe'],
       productDetails: [{ name: 'PLAN_TITLE', value: '10000 MB · 30 days · Italy' }, { name: 'PLAN_DATA_LIMIT', value: '10000 MB' }, { name: 'VALIDITY_IN_DAYS', value: '30' }] },
-    { productId: 'p2:SIMplyg_2GB_15D_IT_V2', providerName: 'SIMply', retailPrice: 6.0, productCategory: 'esim_realtime', countries: ['Italy'], regions: ['Europe'],
+    { productId: 'p2:G_2GB_15D_IT_V2', providerName: 'MeiSIM', retailPrice: 6.0, productCategory: 'esim_realtime', countries: ['Italy'], regions: ['Europe'],
       productDetails: [{ name: 'PLAN_TITLE', value: '1.95 GB · 15 days · Italy' }, { name: 'PLAN_DATA_LIMIT', value: '1.95 GB' }, { name: 'VALIDITY_IN_DAYS', value: '15' }] },
   ],
   JP: [
-    { productId: 'mm_JP_3gb_15d', providerName: 'Mobimatter', retailPrice: 8.0,  productCategory: 'esim_realtime', countries: ['JP', 'Japan'], regions: ['Asia'], productDetails: det('Japan 3GB 15 days', '3 GB', '15', 'NTT Docomo') },
-    { productId: 'mm_JP_10gb_30d',providerName: 'Mobimatter', retailPrice: 17.0, productCategory: 'esim_realtime', countries: ['JP', 'Japan'], regions: ['Asia'], productDetails: det('Japan 10GB 30 days', '10 GB', '30', 'NTT Docomo') },
+    { productId: 'mm_JP_3gb_15d', providerName: 'MeiSIM', retailPrice: 8.0,  productCategory: 'esim_realtime', countries: ['JP', 'Japan'], regions: ['Asia'], productDetails: det('Japan 3GB 15 days', '3 GB', '15', 'NTT Docomo') },
+    { productId: 'mm_JP_10gb_30d',providerName: 'MeiSIM', retailPrice: 17.0, productCategory: 'esim_realtime', countries: ['JP', 'Japan'], regions: ['Asia'], productDetails: det('Japan 10GB 30 days', '10 GB', '30', 'NTT Docomo') },
   ],
   US: [
-    { productId: 'mm_US_5gb_30d', providerName: 'Mobimatter', retailPrice: 12.0, productCategory: 'esim_realtime', countries: ['US', 'United States'], regions: ['Americas'], productDetails: det('USA 5GB 30 days', '5 GB', '30', 'AT&T, T-Mobile') },
+    { productId: 'mm_US_5gb_30d', providerName: 'MeiSIM', retailPrice: 12.0, productCategory: 'esim_realtime', countries: ['US', 'United States'], regions: ['Americas'], productDetails: det('USA 5GB 30 days', '5 GB', '30', 'AT&T, T-Mobile') },
     { productId: 'p3:1:100', providerName: 'MeiSIM', retailPrice: 25.0, productCategory: 'esim_realtime', countries: ['US', 'United States'], regions: ['United States'],
       productDetails: [
         { name: 'PLAN_TITLE', value: 'US Number — Unlimited talk, text & 5GB' },

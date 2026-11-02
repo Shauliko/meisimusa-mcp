@@ -1,7 +1,7 @@
 // Shared mapping for MeiSIM's PUBLIC retail catalog (/mm/products). Used by
 // search_plans, get_quote, and get_activation so the plan shape is identical
 // everywhere. Retail prices are USD. Field names vary across providers
-// (Mobimatter / SIMply / etc.), so every read uses documented fallbacks.
+// (one per supply line), so every read uses documented fallbacks.
 
 import type { Config } from './config.js';
 
