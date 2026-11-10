@@ -2,6 +2,7 @@
 // read-only catalog tools, every plan with a buy_url on meisimusa.com, nothing
 // that moves money, reads a key, or touches an account.
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import type { Config } from '../src/config.js';
 import { VERSION } from '../src/config.js';
 import { buildServer } from '../src/server.js';
@@ -93,8 +94,11 @@ describe('get_ai_line_offer', () => {
     expect(r.ready_now).toEqual({ texts: 12, voice: 3 });
     expect(r.apply_url).toBe('https://www.meisimusa.com/api-for-ai-agents.html');
     expect(r.docs_url).toBe('https://www.meisimusa.com/api-docs.html');
-    const strict = (tools(cfg)['get_ai_line_offer'].outputSchema as any).strict();
+    const strict = strictOut('get_ai_line_offer');
     expect(strict.safeParse(r).success, JSON.stringify(strict.safeParse(r))).toBe(true);
+    // The strict copy must really be strict: a field the schema does not declare fails.
+    expect(strict.safeParse({ ...r, not_declared: 1 }).success).toBe(false);
+    expect(strict.safeParse({ ...r, delivery: { ...r.delivery, not_declared: 1 } }).success).toBe(false);
   });
   it('carries no key and no customer data', async () => {
     const r = sc(await makeGetAiLineOfferHandler(cfg)({}));
@@ -161,13 +165,22 @@ describe('buy links', () => {
 });
 
 const IT = { country_code: 'IT', duration_days: 5, sort_by: 'price' as const };
-const strictOut = (name: string, c: Config = cfg) => {
+// A strict copy of a tool's output schema, the way strict clients read it:
+// every object refuses a field it does not declare. Written for zod 4 (the
+// schema's _zod.def); zod 3's _def.typeName is gone, and a helper that did
+// not recognise the schema would hand it back loose and pass everything.
+const strictOut = (name: string, c: Config = cfg): any => {
   const o = tools(c)[name].outputSchema as any;
-  const deep = (z: any): any => {
-    if (z?._def?.typeName === 'ZodObject') { const sh: any = {}; for (const [k, v] of Object.entries(z.shape)) sh[k] = deep(v); return z.constructor.create(sh).strict(); }
-    if (z?._def?.typeName === 'ZodArray') return z.constructor.create(deep(z.element));
-    if (z?._def?.typeName === 'ZodOptional' || z?._def?.typeName === 'ZodNullable' || z?._def?.typeName === 'ZodDefault') return new z.constructor({ ...z._def, innerType: deep(z._def.innerType) });
-    return z;
+  const deep = (s: any): any => {
+    const d = s?._zod?.def;
+    if (!d) throw new Error('strictOut: not a zod 4 schema');
+    if (d.type === 'object') { const sh: any = {}; for (const [k, v] of Object.entries(d.shape)) sh[k] = deep(v); return z.strictObject(sh); }
+    if (d.type === 'array') return z.array(deep(d.element));
+    if (d.type === 'optional') return z.optional(deep(d.innerType));
+    if (d.type === 'nullable') return z.nullable(deep(d.innerType));
+    if (d.type === 'default') return z._default(deep(d.innerType), d.defaultValue);
+    if (d.type === 'union') return z.union(d.options.map(deep));
+    return s;
   };
   return deep(o);
 };
@@ -188,6 +201,7 @@ describe('directory: frugal results', () => {
       if (p.network_carriers) expect(p.network_carriers.length).toBeGreaterThan(0);
     }
     expect(strictOut('search_plans').safeParse(r).success, JSON.stringify(strictOut('search_plans').safeParse(r))).toBe(true);
+    expect(strictOut('search_plans').safeParse({ ...r, plans: [{ ...r.plans[0], not_declared: 1 }] }).success).toBe(false);
   });
   it('search_plans: the text block is compact JSON, not pretty-printed', async () => {
     const res: any = await makeSearchPlansHandler(cfg)({ ...IT });

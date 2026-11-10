@@ -32,9 +32,11 @@ export const purchaseInput = {
     .optional()
     .describe('Not used: payment happens on the hosted Stripe page via payment_url. Reserved for a future direct-charge path.'),
   billing_country: z.string().length(2).optional(),
+  // guid, not uuid: zod 4's uuid() refuses ids that are not RFC 4122, and
+  // zod 3's accepted any 8-4-4-4-12 hex key. A client's key keeps working.
   idempotency_key: z
     .string()
-    .uuid()
+    .guid()
     .optional()
     .describe('Generated if omitted. Reusing a key returns the first checkout instead of starting another.'),
 };
