@@ -10,7 +10,7 @@ import { buyUrl } from '../src/retail.js';
 import { makeSearchPlansHandler } from '../src/tools/search_plans.js';
 import { makeSearchUsNumbersHandler } from '../src/tools/search_us_numbers.js';
 import { makeGetQuoteHandler } from '../src/tools/get_quote.js';
-import { makeGetAiLineOfferHandler } from '../src/tools/get_ai_line_offer.js';
+import { makeGetAiLineOfferHandler, getAiLineOfferDescription, aiLineOfferOutput } from '../src/tools/get_ai_line_offer.js';
 import { DIRECTORY_INSTRUCTIONS } from '../src/server.js';
 
 const cfg: Config = {
@@ -91,7 +91,13 @@ describe('get_ai_line_offer', () => {
     expect(r.includes.join(' ')).toMatch(/Outbound calls to US numbers only/);
     expect(r.delivery.from_stock).toBe('seconds');
     expect(r.payment_methods.length).toBeGreaterThan(0);
-    expect(r.ready_now).toEqual({ texts: 12, voice: 3 });
+    // 2026-11-12: no count of ready numbers anywhere in the answer; who to
+    // write to for hundreds of lines instead.
+    expect(r).not.toHaveProperty('ready_now');
+    expect(JSON.stringify(r)).not.toMatch(/ready_now|ready now|in stock/i);
+    expect(r.volume_pricing).toBe('Need hundreds of lines? Write to support@meisimusa.com with how many you need and we will send you a price.');
+    expect(r.volume_contact).toBe('support@meisimusa.com');
+    expect(r.monthly.note).toMatch(/Need hundreds of lines\?/);
     expect(r.apply_url).toBe('https://www.meisimusa.com/api-for-ai-agents.html');
     expect(r.docs_url).toBe('https://www.meisimusa.com/api-docs.html');
     const strict = strictOut('get_ai_line_offer');
@@ -102,7 +108,18 @@ describe('get_ai_line_offer', () => {
   });
   it('carries no key and no customer data', async () => {
     const r = sc(await makeGetAiLineOfferHandler(cfg)({}));
-    expect(JSON.stringify(r)).not.toMatch(/balance_usd|wallet|@|api_key|should-be-ignored/i);
+    // The only address in the answer is our own, for whoever needs hundreds of lines.
+    expect(JSON.stringify(r).replace(/support@meisimusa\.com/g, '')).not.toMatch(/balance_usd|wallet|@|api_key|should-be-ignored/i);
+  });
+  it('neither the tool nor the server instructions promise a count of ready numbers', () => {
+    expect(getAiLineOfferDescription).not.toMatch(/ready now|how many numbers/i);
+    expect(DIRECTORY_INSTRUCTIONS).not.toMatch(/ready now|how many numbers/i);
+    expect(getAiLineOfferDescription).toMatch(/who to write to for a price on hundreds of lines/);
+    expect(DIRECTORY_INSTRUCTIONS).toMatch(/who to write to for a price on hundreds of lines/);
+    // The answer is built field by field from the declared shape, so a count
+    // a backend still sent has no field to travel in.
+    expect(Object.keys(aiLineOfferOutput)).not.toContain('ready_now');
+    expect(Object.keys(aiLineOfferOutput)).toEqual(expect.arrayContaining(['volume_pricing', 'volume_contact']));
   });
 });
 

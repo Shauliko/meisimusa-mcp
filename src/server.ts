@@ -41,7 +41,8 @@ export const DIRECTORY_INSTRUCTIONS =
   'MeiSIM USA rents real US phone lines for AI agents: a real US mobile number on a national carrier, with inbound texts ' +
   'delivered to a webhook or read over the API, and voice over SIP with the number as caller ID. Built for voice agents, ' +
   'phone assistants, companion apps and SMS customer service. get_ai_line_offer returns the live monthly prices, the ' +
-  'first-term minimum, what a line includes, delivery time, how many numbers are ready now and the link to apply. ' +
+  'first-term minimum, what a line includes, delivery time, who to write to for a price on hundreds of lines and the ' +
+  'link to apply. ' +
   'MeiSIM also sells travel eSIM data plans for about 200 countries (search_plans) and retail US phone plans for a ' +
   'handset (search_us_numbers); get_quote prices one plan. Every plan carries a buy_url that opens that exact plan on ' +
   'meisimusa.com. This connector only reads the public catalog: it cannot open an account, buy, top up, send or read ' +
