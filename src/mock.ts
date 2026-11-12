@@ -113,7 +113,7 @@ export function mockBackend(req: BackendRequest): unknown {
   if (req.method === 'GET' && pathOnly === '/dealer/sms-lines/offer') {
     return {
       ok: true, enabled: true, can_order: true, price_per_line_usd: 25, first_month_usd: 25, renew_price_usd: 25, min_months: 2, two_months_usd: 50,
-      daily: { available: true, price_usd: 1, voice_price_usd: 1.5, min_days: 5, activation_fee_usd: 4, voice_activation_fee_usd: 5, fee_waived_from_stock: false, ready_now: { sms: 29, voice: 0 }, note: 'Pay by the day. Every activation is 5 days minimum.' },
+      daily: { available: true, price_usd: 1, voice_price_usd: 1.5, min_days: 5, activation_fee_usd: 4, voice_activation_fee_usd: 5, fee_waived_from_stock: false, note: 'Pay by the day. Every activation is 5 days minimum.' },
       voice: { available: true, price_usd: 35, renew_price_usd: 35, note: 'Calls in and out over SIP.' },
     };
   }

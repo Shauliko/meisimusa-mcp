@@ -162,7 +162,7 @@ const pricingOutput = {
   daily: z.object({
     available: z.boolean(), price_usd: z.number().nullable(), voice_price_usd: z.number().nullable(), min_days: z.number().nullable(),
     activation_fee_usd: z.number().nullable(), voice_activation_fee_usd: z.number().nullable(),
-    ready_now: z.object({ sms: z.number(), voice: z.number() }).nullable(), note: z.string().nullable(),
+    note: z.string().nullable(),
   }).optional(),
   voice_available: z.boolean().optional(), voice_note: z.string().nullable().optional(),
 };

@@ -40,7 +40,6 @@ export function makeGetNumberPricingHandler(cfg: Config) {
         min_days: daily.min_days ?? null,
         activation_fee_usd: daily.activation_fee_usd ?? null,
         voice_activation_fee_usd: daily.voice_activation_fee_usd ?? null,
-        ready_now: daily.ready_now ?? null,
         note: daily.note ?? null,
       },
       voice_available: voice.available === true,
