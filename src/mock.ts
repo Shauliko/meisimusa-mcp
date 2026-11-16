@@ -147,6 +147,10 @@ export function mockBackend(req: BackendRequest): unknown {
     const ref = String(body.customer_reference || '');
     const prior = [...ORDERS.values()].find((o) => o.sms_order && o.customer_reference === ref);
     if (prior) return { ok: true, duplicate: true, note: 'An order with this customer_reference already exists; nothing new was ordered or charged.', order: prior };
+    // Like the real API: a monthly order says which lines it wants.
+    if (body.billing !== 'daily' && !['fresh', 'any'].includes(String(body.line_history || ''))) {
+      throw new ToolError('invalid_input', 'Say which lines you want: line_history "fresh" or "any".', { status: 400 });
+    }
     const count = Number(body.count || 0);
     const daily = body.billing === 'daily';
     const charged = daily ? count * (5 * (body.voice ? 1.5 : 1) + (body.voice ? 5 : 4)) : count * 50;

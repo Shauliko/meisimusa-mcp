@@ -17,7 +17,8 @@ export const BUY_NUMBERS_NAME = 'buy_numbers';
 export const buyNumbersDescription =
   'Order new US phone numbers on your MeiSIM account, paid from its prepaid wallet. Prepaid: no returns, no refunds ' +
   'once a number is delivered. Choose billing "daily" (a minimum number of days paid now, then each day from the wallet) ' +
-  'or "monthly" (a minimum number of months paid up front). Call get_number_pricing first and tell the user the total. ' +
+  'or "monthly" (a minimum number of months paid up front). A monthly order also says line_history: "fresh" or "any"; ask the user which. ' +
+  'Call get_number_pricing first and tell the user the total. ' +
   'Numbers usually land within about 15 minutes; check with get_order. Safe to retry with the same customer_reference. Needs your API key.';
 
 export const buyNumbersInput = {
@@ -26,6 +27,7 @@ export const buyNumbersInput = {
   days: z.number().int().min(1).max(365).optional().describe('Daily billing only: days to pay now (at least the minimum).'),
   months: z.number().int().min(1).max(12).optional().describe('Monthly billing only: months to pay up front (at least the minimum).'),
   voice: z.boolean().optional().describe('Also calls over SIP (costs more; must be enabled on the account).'),
+  line_history: z.enum(['fresh', 'any']).optional().describe('Monthly billing: "fresh" for a number no other account has held (no refund if the carrier blocks it), or "any" for a number from stock that may have been used before. Required for monthly orders.'),
   area_code: z.string().regex(/^\d{3}$/).optional().describe('Preferred 3-digit US area code, if available.'),
   zip_code: z.string().regex(/^\d{5}$/).optional().describe('5-digit US ZIP to pick the number\'s area, if available.'),
   customer_reference: z.string().max(120).optional().describe('Your own reference for this order; a repeat with the same reference returns the first order.'),
@@ -34,14 +36,20 @@ export const buyNumbersInput = {
 export function makeBuyNumbersHandler(cfg: Config) {
   return async (args: {
     count: number; billing: 'daily' | 'monthly'; days?: number; months?: number; voice?: boolean;
-    area_code?: string; zip_code?: string; customer_reference?: string;
+    line_history?: 'fresh' | 'any'; area_code?: string; zip_code?: string; customer_reference?: string;
   }) => {
     requireKey(cfg);
+    // The API asks every monthly order which lines it wants (2026-11): without
+    // it each monthly order came back refused. Ask the user, never guess.
+    if (args.billing === 'monthly' && !args.line_history) {
+      throw new ToolError('invalid_input', 'A monthly order needs line_history: "fresh" (a number no other account has held; no refund if the carrier blocks it) or "any" (a number from stock that may have been used before). Ask the user which, then order again.', { status: 400 });
+    }
     const customer_reference = (args.customer_reference || ('mcp-' + randomUUID())).replace(/[^A-Za-z0-9._\-:/#]/g, '-').slice(0, 120);
     const body: Record<string, unknown> = { count: args.count, billing: args.billing, customer_reference };
     if (args.billing === 'daily' && args.days != null) body.days = args.days;
     if (args.billing === 'monthly' && args.months != null) body.months = args.months;
     if (args.voice) body.voice = true;
+    if (args.line_history) body.line_history = args.line_history;
     if (args.area_code) body.area_code = args.area_code;
     if (args.zip_code) body.zip_code = args.zip_code;
     let data: any;

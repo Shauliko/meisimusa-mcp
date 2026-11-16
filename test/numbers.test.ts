@@ -115,15 +115,23 @@ describe('buy_numbers + get_order', () => {
     expect(byId.numbers).toEqual(first.numbers);
   });
   it('a reference is generated when none is given, and returned', async () => {
-    const r = sc(await makeBuyNumbersHandler(cfg)({ count: 1, billing: 'monthly', months: 2 }));
+    const r = sc(await makeBuyNumbersHandler(cfg)({ count: 1, billing: 'monthly', months: 2, line_history: 'any' }));
     expect(r.customer_reference).toMatch(/^mcp-/);
     expect(r.charged_usd).toBe(50);
   });
   it('an empty wallet is payment_required with advice', async () => {
-    const err = await makeBuyNumbersHandler(cfg)({ count: 50, billing: 'monthly' }).catch((e) => e);
+    const err = await makeBuyNumbersHandler(cfg)({ count: 50, billing: 'monthly', line_history: 'fresh' }).catch((e) => e);
     expect(err).toBeInstanceOf(ToolError);
     expect(err.code).toBe('payment_required');
     expect(err.message).toMatch(/Top up/);
+  });
+  it('a monthly order without line_history is refused before any call, with the two choices', async () => {
+    const err = await makeBuyNumbersHandler(cfg)({ count: 1, billing: 'monthly', months: 2 }).catch((e) => e);
+    expect(err).toBeInstanceOf(ToolError);
+    expect(err.code).toBe('invalid_input');
+    expect(err.message).toMatch(/"fresh"/);
+    expect(err.message).toMatch(/"any"/);
+    expect(err.message).toMatch(/Ask the user/);
   });
   it('unknown order is not_found', async () => {
     const err = await makeGetOrderHandler(cfg)({ order: 'nope' }).catch((e) => e);
