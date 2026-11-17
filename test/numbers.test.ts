@@ -1,6 +1,7 @@
 // The tools on YOUR numbers (API key). Run against the mock, which mirrors the
 // real shapes of /api/v1/sms/* and /dealer/*, plus the one rule the real
 // server enforces before any network call: no key, no tool.
+import { WHO_OPENS_ACCOUNT } from '../src/keyed.js';
 import { describe, it, expect } from 'vitest';
 import type { Config } from '../src/config.js';
 import { VERSION } from '../src/config.js';
@@ -31,7 +32,7 @@ describe('no key, no tool', () => {
       expect(err).toBeInstanceOf(ToolError);
       expect(err.code).toBe('unauthorized');
       expect(err.message).toContain('get-started.html');
-      expect(err.message).toContain('an ID check or a review by a person');
+      expect(err.message).toContain(WHO_OPENS_ACCOUNT);
       expect(err.message).not.toContain('a person approves');
     }
   });

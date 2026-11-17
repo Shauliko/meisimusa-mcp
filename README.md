@@ -6,7 +6,7 @@ The MCP (Model Context Protocol) server for [MeiSIM USA](https://www.meisimusa.c
 2. **Travel eSIMs and retail US plans** (no key). Search plans for about 200 countries, get a quote, pay by card on a Stripe page, get the install QR, top up a line.
 
 > "Which of my numbers got a text in the last hour?" → `read_messages`
-> "Wait for the confirmation text on 423 432 2309 and read it back" → `wait_for_message`
+> "Wait for the clinic's reply on 423 432 2309 and read it back" → `wait_for_message`
 > "Text +1 212 555 0100 from my number: running ten minutes late" → `send_message`
 > "I'm going to Italy for 10 days, get me 5GB" → `search_plans`, `purchase`, `get_activation`
 

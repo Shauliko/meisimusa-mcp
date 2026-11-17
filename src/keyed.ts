@@ -11,13 +11,17 @@ import type { Config } from './config.js';
 import { ToolError } from './errors.js';
 
 export const APPLY_URL = 'https://www.meisimusa.com/get-started.html?utm_source=mcp';
+// Who opens the account, word for word as the site says it everywhere
+// (meisimusa backend/services/selfserve.js WHO_OPENS_ACCOUNT; its
+// agent-read-test compares this copy when this repo sits next to it).
+export const WHO_OPENS_ACCOUNT = "A person opens the account: the AI's owner fills in the sign-up form, which has a robot check, then passes an ID check with a government ID and a phone camera, or a review by a person at MeiSIM. An AI agent cannot open the account by itself. Once the account is open, the AI orders lines and reads its texts through the API, paid from the prepaid wallet.";
 
 export function requireKey(cfg: Config): void {
   if (cfg.mock || cfg.apiKey) return;
   throw new ToolError(
     'unauthorized',
     'This tool needs a MeiSIM API key. Remote: send it as "Authorization: Bearer <key>" on the connection. ' +
-      'Local: set MEISIMUSA_API_KEY. No key yet? Sign up at ' + APPLY_URL + '; every account passes an ID check or a review by a person before it gets a key.',
+      'Local: set MEISIMUSA_API_KEY. No key yet? Sign up at ' + APPLY_URL + '. ' + WHO_OPENS_ACCOUNT,
     { status: 401 },
   );
 }

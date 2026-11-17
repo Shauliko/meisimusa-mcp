@@ -1,7 +1,7 @@
 {
   "name": "meisimusa-mcp",
-  "version": "0.3.3",
-  "description": "MCP server for MeiSIM USA: real US phone numbers for AI agents (read and send texts, buy numbers), plus travel eSIMs, from Claude, ChatGPT, Cursor and any MCP client.",
+  "version": "0.3.4",
+  "description": "MCP server for MeiSIM USA: real US mobile numbers on the T-Mobile network for AI agents. Read the live offer, buy numbers, read and send texts. Also travel eSIMs. Works with any MCP client.",
   "type": "module",
   "bin": {
     "meisimusa-mcp": "dist/cli.js",
@@ -26,21 +26,28 @@
   },
   "keywords": [
     "mcp",
-    "phone-number",
-    "sms",
-    "ai-agents",
+    "mcp-server",
     "model-context-protocol",
-    "esim",
-    "travel",
-    "meisim",
-    "claude",
-    "ai-agent"
+    "ai-agents",
+    "ai-agent",
+    "phone-number",
+    "us-phone-number",
+    "sms",
+    "voice",
+    "sip",
+    "telephony",
+    "meisim"
   ],
   "license": "MIT",
   "author": "MeiSIM USA <support@meisimusa.com>",
   "homepage": "https://www.meisimusa.com/api-for-ai-agents.html",
-  "repository": { "type": "git", "url": "git+https://github.com/Shauliko/meisimusa-mcp.git" },
-  "bugs": { "url": "https://github.com/Shauliko/meisimusa-mcp/issues" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shauliko/meisimusa-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Shauliko/meisimusa-mcp/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
     "zod": "^4.6.7"

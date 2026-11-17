@@ -1,6 +1,7 @@
 // The Claude Connectors Directory build (/mcp-directory): three public,
 // read-only catalog tools, every plan with a buy_url on meisimusa.com, nothing
 // that moves money, reads a key, or touches an account.
+import { WHO_OPENS_ACCOUNT } from '../src/keyed.js';
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import type { Config } from '../src/config.js';
@@ -108,8 +109,10 @@ describe('get_ai_line_offer', () => {
   });
   it('carries no key and no customer data', async () => {
     const r = sc(await makeGetAiLineOfferHandler(cfg)({}));
-    // The only address in the answer is our own, for whoever needs hundreds of lines.
-    expect(JSON.stringify(r).replace(/support@meisimusa\.com/g, '')).not.toMatch(/balance_usd|wallet|@|api_key|should-be-ignored/i);
+    // The only address in the answer is our own, for whoever needs hundreds of lines,
+    // and the only "wallet" is the word in the sentence on who opens the account.
+    expect(JSON.stringify(r).replace(/support@meisimusa\.com/g, '').split(WHO_OPENS_ACCOUNT).join('')).not.toMatch(/balance_usd|wallet|@|api_key|should-be-ignored/i);
+    expect(JSON.stringify(r)).toContain(WHO_OPENS_ACCOUNT);
   });
   it('neither the tool nor the server instructions promise a count of ready numbers', () => {
     expect(getAiLineOfferDescription).not.toMatch(/ready now|how many numbers/i);

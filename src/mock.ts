@@ -184,7 +184,7 @@ export function mockBackend(req: BackendRequest): unknown {
       term_note: 'The first term is 2 months, paid up front; after that the line renews monthly from the account balance.',
       includes: ['A real US mobile number on a national carrier, not a VoIP number', 'Inbound texts delivered to your webhook or read over the API',
         'Voice over SIP, with the number as caller ID', 'One call at a time per line', 'Outbound calls to US numbers only'],
-      delivery: { from_stock: 'seconds', new_number: 'minutes', account: 'Sign up online: the person responsible passes an identity check, and an account that clears every automatic check is approved in minutes. Anything else is reviewed by a person, usually the same day.' },
+      delivery: { from_stock: 'seconds', new_number: 'minutes', account: "A person opens the account: the AI's owner fills in the sign-up form, which has a robot check, then passes an ID check with a government ID and a phone camera, or a review by a person at MeiSIM. An AI agent cannot open the account by itself. Once the account is open, the AI orders lines and reads its texts through the API, paid from the prepaid wallet. An account that clears every automatic check opens in minutes; a review by a person is usually done the same day." },
       payment_methods: ['card', 'Apple Pay', 'Google Pay', 'Alipay', 'WeChat Pay', 'USDT (TRC20 or ERC20)'],
       volume_pricing: 'Need hundreds of lines? Write to support@meisimusa.com with how many you need and we will send you a price.',
       volume_contact: 'support@meisimusa.com', volume_contact_url: 'https://www.meisimusa.com/contact.html',

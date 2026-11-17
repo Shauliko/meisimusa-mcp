@@ -9,6 +9,7 @@
 // What it says for that reader instead: who to write to for a price on
 // hundreds of lines.
 
+import { WHO_OPENS_ACCOUNT } from '../keyed.js';
 import { z } from 'zod';
 import type { Config } from '../config.js';
 import { callBackend } from '../http.js';
@@ -76,7 +77,7 @@ export function makeGetAiLineOfferHandler(cfg: Config) {
       apply_url: String(d?.apply_url || 'https://www.meisimusa.com/api-for-ai-agents.html'),
       docs_url: String(d?.docs_url || 'https://www.meisimusa.com/api-docs.html'),
       how_to_get_one:
-        'Open an account from apply_url (delivery.account says how every account is checked), then order numbers by API or from ' +
+        WHO_OPENS_ACCOUNT + ' The sign-up is at apply_url. Then the AI orders numbers by API, or the owner orders them from ' +
         'the dashboard. This connector only reads the offer; it cannot open an account or buy a line.',
     };
     return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], structuredContent: result };
