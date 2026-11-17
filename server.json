@@ -1,32 +1,26 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
-  "name": "io.github.shauliko/meisimusa-mcp",
-  "description": "Real US phone numbers for AI agents from MeiSIM USA: list your numbers, read and wait for texts, send texts, buy numbers from a prepaid wallet (API key). Also travel eSIMs and retail US plans for ~200 countries with no key, paid by card via a Stripe link.",
-  "version": "0.3.0",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Shauliko/meisimusa-mcp",
+  "title": "MeiSIM USA",
+  "description": "Real US mobile numbers for AI agents: buy numbers, read and send texts with a MeiSIM API key.",
+  "version": "0.3.4",
+  "websiteUrl": "https://www.meisimusa.com/api-for-ai-agents.html",
   "repository": {
     "url": "https://github.com/Shauliko/meisimusa-mcp",
     "source": "github"
   },
-  "packages": [
+  "remotes": [
     {
-      "registryType": "npm",
-      "identifier": "meisimusa-mcp",
-      "version": "0.3.0",
-      "transport": { "type": "stdio" },
-      "environmentVariables": [
+      "type": "streamable-http",
+      "url": "https://mcp.meisimusa.com/mcp",
+      "headers": [
         {
-          "name": "MEISIMUSA_API_KEY",
-          "description": "Your MeiSIM API key. Needed for the tools on your own numbers; not for the retail travel eSIM flow.",
+          "name": "Authorization",
+          "description": "Bearer followed by your MeiSIM API key. The account tools need it; the travel eSIM catalog does not.",
           "isRequired": false,
           "isSecret": true
         }
       ]
-    }
-  ],
-  "remotes": [
-    {
-      "type": "streamable-http",
-      "url": "https://mcp.meisimusa.com/mcp"
     }
   ]
 }
