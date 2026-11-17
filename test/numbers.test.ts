@@ -149,8 +149,8 @@ describe('tool list', () => {
     for (const n of ['get_account', 'get_number_pricing', 'buy_numbers', 'get_order', 'list_my_numbers', 'read_messages', 'wait_for_message', 'send_message']) expect(names).toContain(n);
     for (const n of ['search_sms_services', 'buy_sms_number', 'get_sms']) expect(names).not.toContain(n);
   });
-  it('info-only keeps the retail discovery tools and nothing keyed', () => {
+  it('info-only keeps the public read-only tools (the AI-line offer since 0.3.5) and nothing keyed', () => {
     const names = Object.keys((buildServer({ ...cfg, infoOnly: true }) as any)._registeredTools || {});
-    expect(names.sort()).toEqual(['get_quote', 'search_plans', 'search_us_numbers']);
+    expect(names.sort()).toEqual(['get_ai_line_offer', 'get_quote', 'search_plans', 'search_us_numbers']);
   });
 });

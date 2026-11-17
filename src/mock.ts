@@ -175,18 +175,22 @@ export function mockBackend(req: BackendRequest): unknown {
     return { ok: true, order };
   }
 
-  // ── Public AI-line offer (directory build) ──
+  // ── Public AI-line offer (every build) ──
   if (req.method === 'GET' && pathOnly === '/web/ai-lines/offer') {
     return {
       ok: true, product: 'Real US phone lines for AI agents', currency: 'USD',
-      monthly: { texts_usd: 35, voice_usd: 45, note: 'Per number, per month, all inclusive: no per-message or per-minute charges. The line with voice also receives texts. Need hundreds of lines? Write to support@meisimusa.com with how many you need and we will send you a price.' },
+      monthly: { texts_usd: 35, voice_usd: 45, note: 'Per number, per month, all inclusive: no per-message or per-minute charges. The line with voice also receives texts. Prices drop as an account adds lines: $32 a month for texts or $42 with voice from 10 lines, $29 or $39 from 50, and $25 or $35 from 200, on accounts opened through the online sign-up. For 1,000 lines or more, write to support@meisimusa.com.' },
       usage_billed_separately: false, min_months: 2,
       term_note: 'The first term is 2 months, paid up front; after that the line renews monthly from the account balance.',
       includes: ['A real US mobile number on a national carrier, not a VoIP number', 'Inbound texts delivered to your webhook or read over the API',
         'Voice over SIP, with the number as caller ID', 'One call at a time per line', 'Outbound calls to US numbers only'],
       delivery: { from_stock: 'seconds', new_number: 'minutes', account: "A person opens the account: the AI's owner fills in the sign-up form, which has a robot check, then passes an ID check with a government ID and a phone camera, or a review by a person at MeiSIM. An AI agent cannot open the account by itself. Once the account is open, the AI orders lines and reads its texts through the API, paid from the prepaid wallet. An account that clears every automatic check opens in minutes; a review by a person is usually done the same day." },
       payment_methods: ['card', 'Apple Pay', 'Google Pay', 'Alipay', 'WeChat Pay', 'USDT (TRC20 or ERC20)'],
-      volume_pricing: 'Need hundreds of lines? Write to support@meisimusa.com with how many you need and we will send you a price.',
+      volume_pricing: 'Prices drop as an account adds lines: $32 a month for texts or $42 with voice from 10 lines, $29 or $39 from 50, and $25 or $35 from 200, on accounts opened through the online sign-up. For 1,000 lines or more, write to support@meisimusa.com.',
+      price_ladder: [{ from_lines: 1, to_lines: 9, texts_usd: 35, voice_usd: 45 }, { from_lines: 10, to_lines: 49, texts_usd: 32, voice_usd: 42 },
+        { from_lines: 50, to_lines: 199, texts_usd: 29, voice_usd: 39 }, { from_lines: 200, to_lines: 999, texts_usd: 25, voice_usd: 35 }],
+      price_ladder_ask_from_lines: 1000,
+      price_ladder_applies_to: 'Accounts opened through the online sign-up, counting the lines the account already has. An account with a price agreed with us keeps that price.',
       volume_contact: 'support@meisimusa.com', volume_contact_url: 'https://www.meisimusa.com/contact.html',
       apply_url: 'https://www.meisimusa.com/api-for-ai-agents.html', docs_url: 'https://www.meisimusa.com/api-docs.html',
     };

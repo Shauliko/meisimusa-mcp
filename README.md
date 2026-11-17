@@ -74,6 +74,7 @@ Voice: a number bought with `voice: true` also takes and makes calls over SIP. T
 
 | Tool | What it does | Wraps |
 |---|---|---|
+| `get_ai_line_offer` | The live offer for US phone lines for AI agents: monthly prices, the lower price per line for more lines, first-term minimum, what a line includes, how to sign up | `GET /web/ai-lines/offer` |
 | `search_plans` | Travel eSIM plans for a country, USD | `GET /mm/products?country=` |
 | `get_quote` | Price breakdown for one plan | `GET /mm/products/:id` |
 | `search_us_numbers` | Retail US phone plans (a line on a phone, paid by card) | `GET /mm/products?country=US` |
@@ -89,7 +90,7 @@ The customer pays their own card on Stripe's hosted page; the server never sees 
 
 | Tool | What it does | Wraps |
 |---|---|---|
-| `get_ai_line_offer` | The live offer for US phone lines for AI agents: monthly prices (texts, and with voice over SIP), first-term minimum, what a line includes, delivery, payment methods, who to write to for a price on hundreds of lines, apply + docs links | `GET /web/ai-lines/offer` (public; reads the backend's own settings, so no copy of a price lives in this server) |
+| `get_ai_line_offer` | The live offer for US phone lines for AI agents: monthly prices (texts, and with voice over SIP), first-term minimum, what a line includes, delivery, payment methods, the lower price per line for more lines and who to write to from 1,000 lines, apply + docs links | `GET /web/ai-lines/offer` (public; reads the backend's own settings, so no copy of a price lives in this server) |
 | `search_us_numbers` | Retail US phone plans for a handset, each with a `buy_url` | `GET /mm/products?country=US` |
 | `search_plans` | Travel eSIM plans for a country, each with a `buy_url` | `GET /mm/products?country=` |
 | `get_quote` | Price breakdown for one plan plus its `buy_url` | `GET /mm/products/:id` |

@@ -71,9 +71,10 @@ describe('directory tool set', () => {
   it('directory wins over the full set even when a key is configured', () => {
     expect(Object.keys(tools({ ...cfg, apiKey: 'k', infoOnly: false })).length).toBe(4);
   });
-  it('get_ai_line_offer is absent from /mcp and /mcp-info', () => {
-    expect(Object.keys(tools({ ...cfg, directory: false, apiKey: undefined }))).not.toContain('get_ai_line_offer');
-    expect(Object.keys(tools({ ...cfg, directory: false, infoOnly: true, apiKey: undefined }))).not.toContain('get_ai_line_offer');
+  it('get_ai_line_offer is on /mcp and /mcp-info too, with or without a key (0.3.5)', () => {
+    expect(Object.keys(tools({ ...cfg, directory: false, apiKey: undefined }))).toContain('get_ai_line_offer');
+    expect(Object.keys(tools({ ...cfg, directory: false, apiKey: 'k' }))).toContain('get_ai_line_offer');
+    expect(Object.keys(tools({ ...cfg, directory: false, infoOnly: true, apiKey: undefined }))).toContain('get_ai_line_offer');
   });
 });
 
@@ -92,13 +93,17 @@ describe('get_ai_line_offer', () => {
     expect(r.includes.join(' ')).toMatch(/Outbound calls to US numbers only/);
     expect(r.delivery.from_stock).toBe('seconds');
     expect(r.payment_methods.length).toBeGreaterThan(0);
-    // 2026-11-12: no count of ready numbers anywhere in the answer; who to
-    // write to for hundreds of lines instead.
+    // 2026-11-12: no count of ready numbers anywhere in the answer. 2026-11-17:
+    // the backend's published ladder instead, as a sentence and as steps.
     expect(r).not.toHaveProperty('ready_now');
     expect(JSON.stringify(r)).not.toMatch(/ready_now|ready now|in stock/i);
-    expect(r.volume_pricing).toBe('Need hundreds of lines? Write to support@meisimusa.com with how many you need and we will send you a price.');
+    expect(r.volume_pricing).toBe('Prices drop as an account adds lines: $32 a month for texts or $42 with voice from 10 lines, $29 or $39 from 50, and $25 or $35 from 200, on accounts opened through the online sign-up. For 1,000 lines or more, write to support@meisimusa.com.');
+    expect(r.price_ladder).toEqual([{ from_lines: 1, to_lines: 9, texts_usd: 35, voice_usd: 45 }, { from_lines: 10, to_lines: 49, texts_usd: 32, voice_usd: 42 },
+      { from_lines: 50, to_lines: 199, texts_usd: 29, voice_usd: 39 }, { from_lines: 200, to_lines: 999, texts_usd: 25, voice_usd: 35 }]);
+    expect(r.price_ladder_ask_from_lines).toBe(1000);
+    expect(r.price_ladder_applies_to).toMatch(/online sign-up/);
     expect(r.volume_contact).toBe('support@meisimusa.com');
-    expect(r.monthly.note).toMatch(/Need hundreds of lines\?/);
+    expect(r.monthly.note).toContain('Prices drop as an account adds lines');
     expect(r.apply_url).toBe('https://www.meisimusa.com/api-for-ai-agents.html');
     expect(r.docs_url).toBe('https://www.meisimusa.com/api-docs.html');
     const strict = strictOut('get_ai_line_offer');
@@ -117,8 +122,8 @@ describe('get_ai_line_offer', () => {
   it('neither the tool nor the server instructions promise a count of ready numbers', () => {
     expect(getAiLineOfferDescription).not.toMatch(/ready now|how many numbers/i);
     expect(DIRECTORY_INSTRUCTIONS).not.toMatch(/ready now|how many numbers/i);
-    expect(getAiLineOfferDescription).toMatch(/who to write to for a price on hundreds of lines/);
-    expect(DIRECTORY_INSTRUCTIONS).toMatch(/who to write to for a price on hundreds of lines/);
+    expect(getAiLineOfferDescription).toMatch(/lower price per line for more lines and who to write to from 1,000 lines/);
+    expect(DIRECTORY_INSTRUCTIONS).toMatch(/lower price per line for more lines, who to write to from 1,000 lines/);
     // The answer is built field by field from the declared shape, so a count
     // a backend still sent has no field to travel in.
     expect(Object.keys(aiLineOfferOutput)).not.toContain('ready_now');
