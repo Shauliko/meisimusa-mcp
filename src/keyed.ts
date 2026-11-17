@@ -10,14 +10,14 @@
 import type { Config } from './config.js';
 import { ToolError } from './errors.js';
 
-export const APPLY_URL = 'https://www.meisimusa.com/wholesale.html#apply';
+export const APPLY_URL = 'https://www.meisimusa.com/get-started.html?utm_source=mcp';
 
 export function requireKey(cfg: Config): void {
   if (cfg.mock || cfg.apiKey) return;
   throw new ToolError(
     'unauthorized',
     'This tool needs a MeiSIM API key. Remote: send it as "Authorization: Bearer <key>" on the connection. ' +
-      'Local: set MEISIMUSA_API_KEY. No key yet? Apply at ' + APPLY_URL + ' and a person approves the account.',
+      'Local: set MEISIMUSA_API_KEY. No key yet? Sign up at ' + APPLY_URL + '; every account passes an ID check or a review by a person before it gets a key.',
     { status: 401 },
   );
 }

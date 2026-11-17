@@ -30,7 +30,9 @@ describe('no key, no tool', () => {
       const err = await h({ count: 1, billing: 'daily', from: '4234322309', to: '2125550100', message: 'x', order: 'y' }).catch((e) => e);
       expect(err).toBeInstanceOf(ToolError);
       expect(err.code).toBe('unauthorized');
-      expect(err.message).toContain('wholesale.html#apply');
+      expect(err.message).toContain('get-started.html');
+      expect(err.message).toContain('an ID check or a review by a person');
+      expect(err.message).not.toContain('a person approves');
     }
   });
 });

@@ -30,7 +30,7 @@ export interface Config {
   siteUrl: string;
 }
 
-export const VERSION = '0.3.2';
+export const VERSION = '0.3.3';
 
 export function loadConfig(argv: string[] = process.argv.slice(2)): Config {
   const mock =

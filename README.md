@@ -49,7 +49,7 @@ Without a key the retail tools still work and the number tools answer with where
 }
 ```
 
-**Get an API key.** Apply at https://www.meisimusa.com/wholesale.html#apply. A person reviews every application and approves the account; there is no self-serve signup. Keys are the account: they say which numbers are yours, whose prepaid wallet pays, and what the account may do (sending, voice, a daily spending limit).
+**Get an API key.** Sign up at https://www.meisimusa.com/get-started.html. Every account passes an ID check or a review by a person before it gets a key: one that clears the automatic checks opens in minutes, any other is reviewed by a person, usually the same day. Keys are the account: they say which numbers are yours, whose prepaid wallet pays, and what the account may do (sending, voice, a daily spending limit).
 
 ## Tools
 
